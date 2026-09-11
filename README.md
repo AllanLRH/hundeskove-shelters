@@ -107,10 +107,19 @@ The filters that matter:
   free every night) and *booked elsewhere* (36, run by a municipality or private
   owner through another system).
 * **Certainty.** Five tiers from *inside an official boundary* down to
-  *marker only*, the last being forests with no mapped outline where the
-  distance is measured to a pin. That tier is **off by default**.
+  *marker only*. **Both *near the boundary* and *marker only* are off by
+  default**: the first is merely close to a dog forest rather than in one, and
+  the second has no mapped outline at all, so its distance is measured to a pin.
+* **Facility type.** **Only *Shelter* is on by default**; the other three
+  categories opt in. (If a run excludes shelters entirely, e.g.
+  `--categories 1111`, the default falls back to whatever the data contains
+  rather than showing nothing.)
 * **Proximity.** Max distance, plus a minimum overlap for the facilities that
   are themselves areas.
+
+Those defaults are deliberately strict: out of 338 matches they surface **11** —
+the shelters actually inside a dog forest, 7 of them bookable. Widen by ticking
+*near the boundary* or the other facility types.
 
 **Seeing which places, and booking them.** Clicking a night in the calendar
 opens a detail panel under that month listing the places actually free that

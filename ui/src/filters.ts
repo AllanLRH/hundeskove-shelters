@@ -21,14 +21,32 @@ export interface Filters {
   day: string | null;
 }
 
+/**
+ * Tiers shown before you ask for more.
+ *
+ * `near` and `marker_only` are both weaker claims than the name suggests: the
+ * first is merely close to a boundary rather than inside one, the second has no
+ * mapped boundary at all. Starting with only the places actually in a dog forest
+ * keeps the default answer trustworthy; both tiers are one checkbox away.
+ */
+const DEFAULT_CONFIDENCE: Confidence[] = CONFIDENCE_ORDER.filter(
+  (tier) => tier !== "near" && tier !== "marker_only",
+);
+
+/** Shelters are the thing people usually mean; the other categories opt in. */
+const DEFAULT_FACILITY_TYPES = ["Shelter"];
+
 export function defaultFilters(data: Dataset): Filters {
+  const available = new Set(data.facilities.map((f) => f.facility_type));
+  const types = DEFAULT_FACILITY_TYPES.filter((type) => available.has(type));
   return {
     // Weekends on by default: the common case is "where can we go this weekend?"
     nights: new Set(WEEKEND_NIGHTS),
     availability: new Set<Availability>(["calendar", "open", "unknown"]),
-    // marker_only is a genuinely weaker claim, so it stays off until asked for.
-    confidence: new Set(CONFIDENCE_ORDER.filter((c) => c !== "marker_only")),
-    facilityTypes: new Set(data.facilities.map((f) => f.facility_type)),
+    confidence: new Set(DEFAULT_CONFIDENCE),
+    // Fall back to everything if this dataset has no shelters at all, so a run
+    // with `--categories 1111` is not silently empty on first load.
+    facilityTypes: new Set(types.length > 0 ? types : available),
     maxDistance: 500,
     minOverlap: 0,
     from: data.horizonStart,
@@ -98,9 +116,11 @@ export function toHash(filters: Filters, data: Dataset): string {
   if (filters.from !== data.horizonStart) params.set("from", filters.from);
   if (filters.to !== data.horizonEnd) params.set("to", filters.to);
   if (filters.day) params.set("day", filters.day);
-  const types = [...filters.facilityTypes];
-  const allTypes = new Set(data.facilities.map((f) => f.facility_type));
-  if (types.length !== allTypes.size) params.set("t", types.join("|"));
+  // Always written. Omitting it when everything is selected used to be safe,
+  // because "no t" and "all types" meant the same thing; now the default is
+  // shelters only, so an omitted t would silently narrow a link that had every
+  // type selected.
+  params.set("t", [...filters.facilityTypes].join("|"));
   return params.toString();
 }
 

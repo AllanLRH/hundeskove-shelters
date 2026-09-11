@@ -9,7 +9,13 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { buildDataset, nightIndex } from "../src/data";
-import { applyFilters, defaultFilters, fromHash, toHash } from "../src/filters";
+import {
+  applyFilters,
+  defaultFilters,
+  fromHash,
+  toHash,
+  type Filters,
+} from "../src/filters";
 import type { Availability, Confidence, RawAvailability } from "../src/types";
 
 // npm runs this with cwd = ui/, and the bundle lives elsewhere, so resolve
@@ -53,8 +59,18 @@ check(
   !defaultFilters(data).confidence.has("marker_only"),
 );
 
+check(
+  "'near the boundary' is off by default",
+  !defaultFilters(data).confidence.has("near"),
+);
+check(
+  "only Shelter is selected by default",
+  [...defaultFilters(data).facilityTypes].join() === "Shelter",
+  [...defaultFilters(data).facilityTypes].join(", "),
+);
+
 // --- tri-state availability ------------------------------------------------
-function countWith(states: Availability[]): number {
+function allOf(states: Availability[]): Filters {
   const filters = defaultFilters(data);
   filters.availability = new Set(states);
   filters.confidence = new Set([
@@ -65,7 +81,12 @@ function countWith(states: Availability[]): number {
     "marker_only",
   ] as Confidence[]);
   filters.nights = new Set([0, 1, 2, 3, 4, 5, 6]);
-  return applyFilters(data, filters).length;
+  filters.facilityTypes = new Set(data.facilities.map((f) => f.facility_type));
+  return filters;
+}
+
+function countWith(states: Availability[]): number {
+  return applyFilters(data, allOf(states)).length;
 }
 const calendarOnly = countWith(["calendar"]);
 const plusOpen = countWith(["calendar", "open"]);
@@ -93,8 +114,7 @@ check(
 
 // --- picking a single night ------------------------------------------------
 // What the calendar's day detail and the map's selection both rely on.
-const dayFilters = defaultFilters(data);
-dayFilters.nights = new Set([0, 1, 2, 3, 4, 5, 6]);
+const dayFilters = allOf(["calendar", "open", "unknown"]);
 const someFriday = data.allDates.find((date) => nightIndex(date) === 4)!;
 dayFilters.day = someFriday;
 const dayHits = applyFilters(data, dayFilters);
@@ -126,6 +146,16 @@ tweaked.maxDistance = 120;
 tweaked.nights = new Set([0, 4]);
 tweaked.day = data.allDates[3]!;
 const restored = fromHash(`#${toHash(tweaked, data)}`, data);
+// Regression: selecting every facility type must survive a reload. When the
+// default was "all types", toHash omitted the parameter in exactly this case.
+const allTypes = allOf(["calendar", "open", "unknown"]);
+const restoredTypes = fromHash(`#${toHash(allTypes, data)}`, data);
+check(
+  "selecting every facility type survives a round-trip",
+  restoredTypes.facilityTypes.size === allTypes.facilityTypes.size,
+  `${restoredTypes.facilityTypes.size} of ${allTypes.facilityTypes.size}`,
+);
+
 check(
   "filters survive a URL round-trip",
   restored.maxDistance === 120 &&
