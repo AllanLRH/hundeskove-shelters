@@ -9,7 +9,8 @@ import logging
 from dataclasses import dataclass
 
 import pyproj
-from shapely.geometry import base, shape
+from shapely import make_valid
+from shapely.geometry import MultiPoint, base, shape
 from shapely.strtree import STRtree
 
 logger = logging.getLogger(__name__)
@@ -31,12 +32,62 @@ class Match:
 
 
 def to_shapely(facility: dict) -> base.BaseGeometry:
-    """Build a geometry from a facility record.
+    """Build a geometry from a facility record, exactly as the API states it.
 
     The API's coordinate nesting already matches GeoJSON for the types it uses
     (MultiPoint for shelters, MultiPolygon or MultiPoint for dog forests).
     """
     return shape({"type": facility["geometryType"], "coordinates": facility["geometry"]})
+
+
+def clean_geometry(facility: dict) -> base.BaseGeometry:
+    """Build a geometry fit to run predicates against.
+
+    The dog-forest layer contains two kinds of junk that must be handled before
+    any `covers`/`distance` call:
+
+    * Zero-area polygon components written as a ring of one repeated point, e.g.
+      ``[[p, p, p, p]]``. Nine of Kalvebod hundehegn's ten polygons are these.
+      They carry no information, and mixing them with real polygons makes the
+      geometry mixed-dimension, which crashes `make_valid` outright.
+    * Self-intersecting rings (15 forests). GEOS predicates on an invalid
+      geometry are undefined, so they must be repaired rather than trusted.
+
+    Components are dropped only when something real survives; a facility whose
+    every component is degenerate falls back to its points, so it can still be
+    matched by distance instead of vanishing.
+    """
+    if facility["geometryType"] != "MultiPolygon":
+        return to_shapely(facility)
+
+    kept = [
+        polygon
+        for polygon in facility["geometry"]
+        if shape({"type": "Polygon", "coordinates": polygon}).area > 0
+    ]
+    if not kept:
+        points = [tuple(point) for polygon in facility["geometry"] for point in polygon[0]]
+        logger.debug("%r has no polygon with area; using its points", facility["name"])
+        return MultiPoint(sorted(set(points)))
+
+    geometry = shape({"type": "MultiPolygon", "coordinates": kept})
+    if not geometry.is_valid:
+        logger.debug("repairing invalid geometry for %r", facility["name"])
+        geometry = make_valid(geometry)
+    return geometry
+
+
+def has_boundary(facility: dict) -> bool:
+    """Whether this facility has a real outline, rather than a single marker.
+
+    129 of 505 dog forests are mapped as a bare MultiPoint. A shelter can never
+    be reported inside one of those, and its distance is measured to a marker
+    rather than to an edge.
+    """
+    return facility["geometryType"] == "MultiPolygon" and any(
+        shape({"type": "Polygon", "coordinates": polygon}).area > 0
+        for polygon in facility["geometry"]
+    )
 
 
 def utm32_to_wgs84(easting: float, northing: float) -> tuple[float, float]:
@@ -53,7 +104,7 @@ def match_shelters(
     Distance is 0.0 for a shelter inside a polygon. `inside_polygon` says which
     of the two cases applies, so strict hits stay distinguishable from near ones.
     """
-    forest_geoms = [to_shapely(forest) for forest in dog_forests]
+    forest_geoms = [clean_geometry(forest) for forest in dog_forests]
     tree = STRtree(forest_geoms)
 
     matches: list[Match] = []
@@ -78,10 +129,17 @@ def match_shelters(
             )
         )
 
+    boundless = sum(not has_boundary(m.dog_forest) for m in matches)
     logger.info(
         "%d of %d shelters matched (%d strictly inside a dog forest)",
         len(matches),
         len(shelters),
         sum(m.inside_polygon for m in matches),
     )
+    if boundless:
+        logger.warning(
+            "%d matches are against a dog forest mapped as a bare point, so their "
+            "distance is to a marker and they can never register as inside",
+            boundless,
+        )
     return matches
