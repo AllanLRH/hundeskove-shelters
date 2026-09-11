@@ -34,9 +34,12 @@ DEFAULT_CACHE = Path("cache/place_ids.json")
 CSV_COLUMNS = [
     "shelter_name",
     "shelter_id",
+    "facility_type",
+    "umb_id",
     "dog_forest_name",
     "distance_m",
     "inside_polygon",
+    "overlap_fraction",
     "dog_forest_has_boundary",
     "commune_code",
     "org",
@@ -68,6 +71,7 @@ def make_client() -> httpx2.Client:
 
 def discover(
     regions: tuple[int, ...],
+    categories: dict[int, str],
     max_distance_m: float,
     out_path: Path,
     cache_path: Path,
@@ -78,19 +82,19 @@ def discover(
         dog_forests = udinaturen.fetch_all_regions(
             client, udinaturen.DOG_FOREST_UMB_ID, regions
         )
-        shelters = udinaturen.fetch_all_regions(client, udinaturen.SHELTER_UMB_ID, regions)
-        logger.info("%d dog forests, %d shelters", len(dog_forests), len(shelters))
+        facilities = udinaturen.fetch_categories(client, categories, regions)
+        logger.info("%d dog forests, %d facilities", len(dog_forests), len(facilities))
 
-        matches = geo.match_shelters(shelters, dog_forests, max_distance_m)
+        matches = geo.match_facilities(facilities, dog_forests, max_distance_m)
         matches.sort(key=lambda m: (not m.inside_polygon, m.distance_m))
 
-        bookable_guids = [m.shelter["id"] for m in matches if m.shelter["booking"]]
+        bookable_guids = [m.facility["id"] for m in matches if m.facility["booking"]]
         cache = booking.PlaceIdCache(cache_path, enabled=use_cache)
         place_ids = booking.resolve_place_ids(client, bookable_guids, cache, max_workers)
 
     records = []
     for match in matches:
-        facility = match.shelter
+        facility = match.facility
         easting, northing = geo.representative_coords(facility)
         lat, lon = geo.utm32_to_wgs84(easting, northing)
         place_id, booking_status = place_ids.get(
@@ -100,11 +104,18 @@ def discover(
             {
                 "shelter_id": facility["id"],
                 "name": facility["name"],
+                "facility_type": facility["facility_type"],
+                "umb_id": facility["umb_id"],
                 "description": facility["description"],
                 "dog_forest_name": match.dog_forest["name"],
                 "dog_forest_id": match.dog_forest["id"],
                 "distance_m": round(match.distance_m, 1),
                 "inside_polygon": match.inside_polygon,
+                "overlap_fraction": (
+                    None
+                    if match.overlap_fraction is None
+                    else round(match.overlap_fraction, 4)
+                ),
                 "dog_forest_has_boundary": geo.has_boundary(match.dog_forest),
                 "commune_code": facility["communeCode"],
                 "org": facility["ansvar_Org"],
@@ -123,6 +134,7 @@ def discover(
         "generated_at": datetime.now(UTC).isoformat(),
         "parameters": {
             "regions": list(regions),
+            "categories": categories,
             "max_distance_m": max_distance_m,
         },
         "shelters": records,
@@ -135,7 +147,7 @@ def discover(
 
     statuses = Counter(r["booking_status"] for r in records)
     logger.info(
-        "wrote %s: %d shelters, %d inside a dog forest; booking status %s",
+        "wrote %s: %d facilities, %d inside a dog forest; booking status %s",
         out_path,
         len(records),
         sum(r["inside_polygon"] for r in records),
@@ -143,7 +155,7 @@ def discover(
     )
     if statuses[booking.STATUS_OTHER_OPERATOR]:
         logger.info(
-            "%d shelters are bookable but not through Naturstyrelsen "
+            "%d facilities are bookable but not through Naturstyrelsen "
             "(municipal or privately run) - see booking_url for each",
             statuses[booking.STATUS_OTHER_OPERATOR],
         )
@@ -164,7 +176,7 @@ def check_availability(
 ) -> None:
     if not catalogue_path.exists():
         raise SystemExit(
-            f"No shelter catalogue at {catalogue_path}. "
+            f"No facility catalogue at {catalogue_path}. "
             "Run `hundeskove discover` first."
         )
 
@@ -193,11 +205,11 @@ def check_availability(
 
     with make_client() as client:
         with ThreadPoolExecutor(max_workers=max_workers) as pool:
-            booked_per_shelter = list(pool.map(fetch, with_place_id))
+            booked_per_facility = list(pool.map(fetch, with_place_id))
 
     booked_by_id = {
         record["shelter_id"]: booked
-        for record, booked in zip(with_place_id, booked_per_shelter)
+        for record, booked in zip(with_place_id, booked_per_facility)
     }
 
     checked_at = datetime.now(UTC).isoformat()
@@ -248,7 +260,7 @@ def check_availability(
             )
 
     logger.info(
-        "wrote %s and %s: %d shelters, %d with free nights in the next %d months",
+        "wrote %s and %s: %d facilities, %d with free nights in the next %d months",
         json_path,
         csv_path,
         len(results),
@@ -264,6 +276,20 @@ def check_availability(
 
 def _regions(value: str) -> tuple[int, ...]:
     return tuple(int(part) for part in value.split(","))
+
+
+def _categories(value: str) -> dict[int, str]:
+    known = udinaturen.OVERNIGHT_CATEGORIES
+    chosen = {}
+    for part in value.split(","):
+        umb_id = int(part)
+        if umb_id not in known:
+            raise argparse.ArgumentTypeError(
+                f"unknown category {umb_id}; known: "
+                + ", ".join(f"{k} ({v})" for k, v in known.items())
+            )
+        chosen[umb_id] = known[umb_id]
+    return chosen
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -285,7 +311,13 @@ def build_parser() -> argparse.ArgumentParser:
             "--max-distance",
             type=float,
             default=500.0,
-            help="metres from a dog forest a shelter may be and still count (default: 500)",
+            help="metres from a dog forest a facility may be and still count (default: 500)",
+        )
+        sub.add_argument(
+            "--categories",
+            type=_categories,
+            default=udinaturen.OVERNIGHT_CATEGORIES,
+            help="comma-separated umbIds to include (default: 1115,1111,1112,1106)",
         )
         sub.add_argument(
             "--cache", type=Path, default=DEFAULT_CACHE, help="GUID -> place id cache file"
@@ -348,6 +380,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "discover":
         discover(
             regions=args.regions,
+            categories=args.categories,
             max_distance_m=args.max_distance,
             out_path=args.out,
             cache_path=args.cache,
@@ -366,7 +399,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.refresh_shelters or not args.shelters.exists():
             discover(
                 regions=args.regions,
-                    max_distance_m=args.max_distance,
+                categories=args.categories,
+                max_distance_m=args.max_distance,
                 out_path=args.shelters,
                 cache_path=args.cache,
                 use_cache=not args.no_cache,

@@ -1,4 +1,4 @@
-"""Spatial join between shelters and dog forests.
+"""Spatial join between overnight facilities and dog forests.
 
 All facility geometry from udinaturen.dk is EPSG:25832 (UTM 32N), so distances
 are plain metres and no reprojection is needed for the join itself. WGS84 is
@@ -23,19 +23,22 @@ _to_wgs84 = pyproj.Transformer.from_crs(UTM32, WGS84, always_xy=True)
 
 @dataclass(frozen=True, slots=True)
 class Match:
-    """A shelter paired with the dog forest it belongs to (or sits closest to)."""
+    """A facility paired with the dog forest it belongs to (or sits closest to)."""
 
-    shelter: dict
+    facility: dict
     dog_forest: dict
     distance_m: float
     inside_polygon: bool
+    #: Share of an *area* facility lying inside the dog forest. None for points,
+    #: where containment already says everything there is to say.
+    overlap_fraction: float | None = None
 
 
 def to_shapely(facility: dict) -> base.BaseGeometry:
     """Build a geometry from a facility record, exactly as the API states it.
 
     The API's coordinate nesting already matches GeoJSON for the types it uses
-    (MultiPoint for shelters, MultiPolygon or MultiPoint for dog forests).
+    (MultiPoint for most facilities, MultiPolygon or MultiPoint for dog forests).
     """
     return shape({"type": facility["geometryType"], "coordinates": facility["geometry"]})
 
@@ -107,22 +110,26 @@ def representative_coords(facility: dict) -> tuple[float, float]:
     return point.x, point.y
 
 
-def match_shelters(
-    shelters: list[dict], dog_forests: list[dict], max_distance_m: float
+def match_facilities(
+    facilities: list[dict], dog_forests: list[dict], max_distance_m: float
 ) -> list[Match]:
-    """Keep shelters inside, or within `max_distance_m` of, a dog forest.
+    """Keep facilities inside, or within `max_distance_m` of, a dog forest.
 
-    Distance is 0.0 for a shelter inside a polygon. `inside_polygon` says which
+    Distance is 0.0 for a facility inside a polygon. `inside_polygon` says which
     of the two cases applies, so strict hits stay distinguishable from near ones.
+
+    For a facility that is itself an area, containment is the wrong question — a
+    Frit teltningsområde is essentially never wholly inside a dog forest, though
+    79 of 124 overlap one. Those carry `overlap_fraction` instead.
     """
     forest_geoms = [clean_geometry(forest) for forest in dog_forests]
     tree = STRtree(forest_geoms)
 
     matches: list[Match] = []
-    for shelter in shelters:
-        point = to_shapely(shelter)
+    for facility in facilities:
+        geometry = clean_geometry(facility)
         indices, distances = tree.query_nearest(
-            point, max_distance=max_distance_m, return_distance=True, all_matches=False
+            geometry, max_distance=max_distance_m, return_distance=True, all_matches=False
         )
         if len(indices) == 0:
             continue
@@ -130,21 +137,25 @@ def match_shelters(
         index = int(indices[0])
         distance = float(distances[0])
         forest_geom = forest_geoms[index]
-        inside = forest_geom.covers(point)
+        inside = forest_geom.covers(geometry)
+        overlap = None
+        if geometry.area > 0:
+            overlap = forest_geom.intersection(geometry).area / geometry.area
         matches.append(
             Match(
-                shelter=shelter,
+                facility=facility,
                 dog_forest=dog_forests[index],
                 distance_m=0.0 if inside else distance,
                 inside_polygon=inside,
+                overlap_fraction=overlap,
             )
         )
 
     boundless = sum(not has_boundary(m.dog_forest) for m in matches)
     logger.info(
-        "%d of %d shelters matched (%d strictly inside a dog forest)",
+        "%d of %d facilities matched (%d strictly inside a dog forest)",
         len(matches),
-        len(shelters),
+        len(facilities),
         sum(m.inside_polygon for m in matches),
     )
     if boundless:
