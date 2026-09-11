@@ -20,7 +20,7 @@ from pathlib import Path
 
 import httpx2
 
-from . import booking, geo, udinaturen
+from . import booking, geo, osm, udinaturen
 
 USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
@@ -30,6 +30,7 @@ USER_AGENT = (
 DEFAULT_CATALOGUE = Path("output/shelters.json")
 DEFAULT_OUT_DIR = Path("output")
 DEFAULT_CACHE = Path("cache/place_ids.json")
+DEFAULT_OSM_CACHE = Path("cache/osm_dog_parks.json")
 
 CSV_COLUMNS = [
     "shelter_name",
@@ -41,6 +42,7 @@ CSV_COLUMNS = [
     "inside_polygon",
     "overlap_fraction",
     "dog_forest_has_boundary",
+    "geofence_source",
     "commune_code",
     "org",
     "bookable",
@@ -77,6 +79,8 @@ def discover(
     cache_path: Path,
     use_cache: bool,
     max_workers: int,
+    osm_cache_path: Path,
+    refresh_osm: bool,
 ) -> dict:
     with make_client() as client:
         dog_forests = udinaturen.fetch_all_regions(
@@ -84,6 +88,9 @@ def discover(
         )
         facilities = udinaturen.fetch_categories(client, categories, regions)
         logger.info("%d dog forests, %d facilities", len(dog_forests), len(facilities))
+
+        parks = osm.to_polygons(osm.fetch_dog_parks(osm_cache_path, refresh_osm))
+        dog_forests, filled = osm.fill_missing_geofences(dog_forests, parks)
 
         matches = geo.match_facilities(facilities, dog_forests, max_distance_m)
         matches.sort(key=lambda m: (not m.inside_polygon, m.distance_m))
@@ -117,6 +124,7 @@ def discover(
                     else round(match.overlap_fraction, 4)
                 ),
                 "dog_forest_has_boundary": geo.has_boundary(match.dog_forest),
+                "geofence_source": match.dog_forest.get("geofence_source", "fkg"),
                 "commune_code": facility["communeCode"],
                 "org": facility["ansvar_Org"],
                 "bookable": bool(facility["booking"]),
@@ -132,10 +140,15 @@ def discover(
 
     catalogue = {
         "generated_at": datetime.now(UTC).isoformat(),
+        "attribution": {
+            "facilities": "udinaturen.dk / GeoFA-FKG",
+            "geofence_gaps": osm.ATTRIBUTION,
+        },
         "parameters": {
             "regions": list(regions),
             "categories": categories,
             "max_distance_m": max_distance_m,
+            "geofences_filled_from_osm": filled,
         },
         "shelters": records,
     }
@@ -325,6 +338,17 @@ def build_parser() -> argparse.ArgumentParser:
         sub.add_argument(
             "--no-cache", action="store_true", help="ignore and do not write the cache"
         )
+        sub.add_argument(
+            "--osm-cache",
+            type=Path,
+            default=DEFAULT_OSM_CACHE,
+            help="cached OSM dog parks used to fill missing dog-forest boundaries",
+        )
+        sub.add_argument(
+            "--refresh-osm",
+            action="store_true",
+            help="re-query Overpass instead of using the cached dog parks",
+        )
 
     def add_availability_flags(sub: argparse.ArgumentParser) -> None:
         sub.add_argument(
@@ -386,6 +410,8 @@ def main(argv: list[str] | None = None) -> int:
             cache_path=args.cache,
             use_cache=not args.no_cache,
             max_workers=args.max_workers,
+            osm_cache_path=args.osm_cache,
+            refresh_osm=args.refresh_osm,
         )
     elif args.command == "availability":
         check_availability(
@@ -405,6 +431,8 @@ def main(argv: list[str] | None = None) -> int:
                 cache_path=args.cache,
                 use_cache=not args.no_cache,
                 max_workers=args.max_workers,
+                osm_cache_path=args.osm_cache,
+                refresh_osm=args.refresh_osm,
             )
         else:
             logger.info("reusing existing catalogue %s", args.shelters)

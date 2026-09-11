@@ -11,6 +11,7 @@ from dataclasses import dataclass
 import pyproj
 from shapely import make_valid
 from shapely.geometry import MultiPoint, base, shape
+from shapely.ops import transform
 from shapely.strtree import STRtree
 
 logger = logging.getLogger(__name__)
@@ -19,6 +20,7 @@ UTM32 = 25832
 WGS84 = 4326
 
 _to_wgs84 = pyproj.Transformer.from_crs(UTM32, WGS84, always_xy=True)
+_to_utm32 = pyproj.Transformer.from_crs(WGS84, UTM32, always_xy=True)
 
 
 @dataclass(frozen=True, slots=True)
@@ -97,6 +99,11 @@ def utm32_to_wgs84(easting: float, northing: float) -> tuple[float, float]:
     """Convert UTM 32N coordinates to (latitude, longitude)."""
     lon, lat = _to_wgs84.transform(easting, northing)
     return lat, lon
+
+
+def wgs84_to_utm32_shape(geometry: base.BaseGeometry) -> base.BaseGeometry:
+    """Reproject a lon/lat geometry into UTM 32N, so it can join the facility data."""
+    return transform(_to_utm32.transform, geometry)
 
 
 def representative_coords(facility: dict) -> tuple[float, float]:
