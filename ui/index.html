@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hundeskove — sleeping out with a dog</title>
+  </head>
+  <body>
+    <header>
+      <h1>Sleeping out with a dog</h1>
+      <p id="status">Loading…</p>
+      <nav class="tabs">
+        <button id="tab-list" class="active">List</button>
+        <button id="tab-calendar">Calendar</button>
+        <button id="tab-map">Map</button>
+      </nav>
+    </header>
+    <main>
+      <aside id="panel"></aside>
+      <div class="views">
+        <div id="view-list" class="view"></div>
+        <div id="view-calendar" class="view" hidden></div>
+        <div id="view-map" class="view" hidden></div>
+      </div>
+    </main>
+    <footer>
+      Facilities and dog forests from
+      <a href="https://udinaturen.dk" rel="noreferrer">udinaturen.dk</a> / GeoFA-FKG.
+      Map tiles and gap-filled boundaries ©
+      <a href="https://www.openstreetmap.org/copyright" rel="noreferrer">OpenStreetMap</a>
+      contributors (ODbL).
+    </footer>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
