@@ -11,7 +11,7 @@ from dataclasses import dataclass
 import pyproj
 from shapely import make_valid
 from shapely.geometry import MultiPoint, base, shape
-from shapely.ops import transform
+from shapely.ops import transform, unary_union
 from shapely.strtree import STRtree
 
 logger = logging.getLogger(__name__)
@@ -78,8 +78,27 @@ def clean_geometry(facility: dict) -> base.BaseGeometry:
     geometry = shape({"type": "MultiPolygon", "coordinates": kept})
     if not geometry.is_valid:
         logger.debug("repairing invalid geometry for %r", facility["name"])
-        geometry = make_valid(geometry)
+        geometry = _areal_parts(make_valid(geometry), facility["name"])
     return geometry
+
+
+def _areal_parts(geometry: base.BaseGeometry, name: str) -> base.BaseGeometry:
+    """Keep only the polygonal parts of a repaired geometry.
+
+    Repairing a self-intersecting ring can leave the crossing behind as a
+    dangling LineString, giving a GeometryCollection of a polygon plus a spur
+    (four dog forests do this). The spur is not a boundary: it would draw as a
+    stray line on a map, and worse, it takes part in `covers` and `distance`, so
+    a facility could be measured against a line rather than against the area.
+    """
+    parts = list(getattr(geometry, "geoms", [geometry]))
+    areal = [part for part in parts if part.area > 0]
+    if len(areal) == len(parts):
+        return geometry
+    logger.debug("dropped %d non-areal part(s) from %r", len(parts) - len(areal), name)
+    if not areal:
+        return geometry
+    return unary_union(areal)
 
 
 def has_boundary(facility: dict) -> bool:
@@ -104,6 +123,11 @@ def utm32_to_wgs84(easting: float, northing: float) -> tuple[float, float]:
 def wgs84_to_utm32_shape(geometry: base.BaseGeometry) -> base.BaseGeometry:
     """Reproject a lon/lat geometry into UTM 32N, so it can join the facility data."""
     return transform(_to_utm32.transform, geometry)
+
+
+def utm32_to_wgs84_shape(geometry: base.BaseGeometry) -> base.BaseGeometry:
+    """Reproject a UTM 32N geometry into lon/lat, ready for GeoJSON."""
+    return transform(_to_wgs84.transform, geometry)
 
 
 def representative_coords(facility: dict) -> tuple[float, float]:
