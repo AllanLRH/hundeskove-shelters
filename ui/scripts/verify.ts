@@ -153,7 +153,8 @@ check(
   ),
 );
 const aerialParam: Record<string, string> = {
-  Google: "basemap=satellite",
+  // Google's satellite basemap is the data=!3m1!1e3 segment in the /place/ form.
+  Google: "data=!3m1!1e3",
   Apple: "t=k",
   Bing: "style=h",
 };
@@ -164,6 +165,35 @@ check(
     .every((s) => s.href.includes(aerialParam[s.label]!)),
   services.map((s) => s.label).join(", "),
 );
+
+// The regression that prompted this: centring the viewport is not a waypoint.
+const pinMarker: Record<string, string> = {
+  Google: "/maps/place/",
+  Apple: "q=",
+  Bing: "sp=point.",
+  OSM: "mlat=",
+};
+check(
+  "every service drops a pin, not just a centred viewport",
+  services.every((s) => s.href.includes(pinMarker[s.label]!)),
+  services.filter((s) => !s.href.includes(pinMarker[s.label]!)).map((s) => s.label).join(", "),
+);
+check(
+  "no service is merely centred (map_action=map / bare cp=)",
+  services.every((s) => !s.href.includes("map_action=map") && !s.href.includes("?cp=")),
+);
+// A name with an underscore would truncate Bing's pin, and encodeURIComponent
+// does not escape underscores.
+const awkward = { ...sample, name: "Shelter_A_B", lat: 56, lon: 10 };
+const bing = mapServices(awkward).find((s) => s.label === "Bing")!.href;
+check(
+  "an underscore in a name cannot break Bing's pin",
+  bing.includes("sp=point.56_10_") && !bing.slice(bing.indexOf("_10_") + 4).includes("_"),
+  bing,
+);
+const blank = mapServices({ ...sample, name: "   " }).find((s) => s.label === "Apple")!.href;
+check("a blank name still pins with a fallback label", blank.includes("q=Shelter&"));
+
 check(
   "every map link is https",
   services.every((s) => s.href.startsWith("https://")),

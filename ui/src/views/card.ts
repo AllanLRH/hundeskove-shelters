@@ -156,31 +156,44 @@ const AERIAL_ZOOM = 18;
 /**
  * Where to look at the terrain around a facility.
  *
- * Aerial imagery first, because the question these answer is "what is actually
- * there" — tree cover, a clearing, how far the water is — which a road map
- * cannot show. Each service is asked for its satellite/aerial basemap through
- * its own documented URL scheme rather than its default view.
+ * Aerial imagery, because the question these answer is "what is actually there"
+ * — tree cover, a clearing, how far the water is — which a road map cannot show.
+ *
+ * Every one of these drops a **pin** at the coordinates, the way pasting
+ * coordinates into the service's own search box would. Merely centring the
+ * viewport (Google's `map_action=map`, Apple's bare `ll`, Bing's `cp`) leaves
+ * you guessing which clearing in the trees is the shelter.
  */
 export function mapServices(facility: Facility): { label: string; href: string }[] {
   const { lat, lon } = facility;
+  // 6 facilities have a blank name upstream, so fall back rather than pinning
+  // an empty label.
+  const label = facility.name.trim() || "Shelter";
+  // encodeURIComponent leaves "_" alone, and Bing splits sp=point. on
+  // underscores — a name containing one would silently truncate the pin.
+  const pinLabel = encodeURIComponent(label).replaceAll("_", "%5F");
   return [
     {
       label: "Google",
-      // Maps URLs API: map_action=map is the form that accepts basemap.
-      href: `https://www.google.com/maps/@?api=1&map_action=map&center=${lat},${lon}&zoom=${AERIAL_ZOOM}&basemap=satellite`,
+      // The form Google itself produces for a searched coordinate switched to
+      // satellite: /place/ gives the pin, data=!3m1!1e3 the imagery. The
+      // documented ?api=1 form can do one or the other, never both.
+      href: `https://www.google.com/maps/place/${lat},${lon}/@${lat},${lon},${AERIAL_ZOOM}z/data=!3m1!1e3`,
     },
     {
-      // MapKit URL scheme: t=k is satellite, t=h hybrid.
+      // MapKit URL scheme: q alongside ll labels a pin at ll rather than
+      // running a search; t=k is satellite.
       label: "Apple",
-      href: `https://maps.apple.com/?ll=${lat},${lon}&z=${AERIAL_ZOOM}&t=k`,
+      href: `https://maps.apple.com/?q=${encodeURIComponent(label)}&ll=${lat},${lon}&z=${AERIAL_ZOOM}&t=k`,
     },
     {
-      // style=h is aerial with labels, style=a aerial without.
+      // sp=point.lat_lon_title drops a labelled pushpin; style=h is aerial with
+      // labels. Underscores separate the fields, so the title must be encoded.
       label: "Bing",
-      href: `https://www.bing.com/maps?cp=${lat}~${lon}&lvl=${AERIAL_ZOOM}&style=h`,
+      href: `https://www.bing.com/maps?sp=point.${lat}_${lon}_${pinLabel}&lvl=${AERIAL_ZOOM}&style=h`,
     },
     {
-      // No aerial imagery, but it is the source of this data and drops a pin.
+      // No aerial imagery, but it is the source of this data; mlat/mlon pins it.
       label: "OSM",
       href: `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=17/${lat}/${lon}`,
     },
