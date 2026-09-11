@@ -19,8 +19,9 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 
 import httpx2
+from shapely.geometry import mapping
 
-from . import booking, geo, osm, udinaturen
+from . import booking, geo, osm, serve as serve_module, udinaturen
 
 USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
@@ -31,6 +32,8 @@ DEFAULT_CATALOGUE = Path("output/shelters.json")
 DEFAULT_OUT_DIR = Path("output")
 DEFAULT_CACHE = Path("cache/place_ids.json")
 DEFAULT_OSM_CACHE = Path("cache/osm_dog_parks.json")
+DEFAULT_GEOJSON = Path("output/dog_forests.geojson")
+DEFAULT_UI_DIR = Path("ui/dist")
 
 CSV_COLUMNS = [
     "shelter_name",
@@ -158,6 +161,10 @@ def discover(
         json.dumps(catalogue, indent=2, ensure_ascii=False), encoding="utf-8"
     )
 
+    write_dog_forest_geojson(
+        dog_forests, {r["dog_forest_id"] for r in records}, out_path.parent
+    )
+
     statuses = Counter(r["booking_status"] for r in records)
     logger.info(
         "wrote %s: %d facilities, %d inside a dog forest; booking status %s",
@@ -174,6 +181,47 @@ def discover(
         )
     return catalogue
 
+
+def write_dog_forest_geojson(
+    dog_forests: list[dict], matched_ids: set[str], out_dir: Path
+) -> Path:
+    """Export dog-forest outlines in WGS84 so the map can draw the off-leash zones.
+
+    Every forest is written, not only the matched ones: the unmatched outlines are
+    what let you see that a facility sits just outside a boundary rather than in
+    open country. `has_boundary` is false for forests that are only a marker.
+    """
+    features = []
+    for forest in dog_forests:
+        geometry = geo.utm32_to_wgs84_shape(geo.clean_geometry(forest))
+        features.append(
+            {
+                "type": "Feature",
+                "properties": {
+                    "id": forest["id"],
+                    "name": forest["name"],
+                    "geofence_source": forest.get("geofence_source", "fkg"),
+                    "has_boundary": geo.has_boundary(forest),
+                    "matched": forest["id"] in matched_ids,
+                },
+                "geometry": mapping(geometry),
+            }
+        )
+
+    path = out_dir / DEFAULT_GEOJSON.name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps({"type": "FeatureCollection", "features": features}, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    logger.info(
+        "wrote %s: %d dog forests (%d matched, %d without an outline)",
+        path,
+        len(features),
+        sum(f["properties"]["matched"] for f in features),
+        sum(not f["properties"]["has_boundary"] for f in features),
+    )
+    return path
 
 # --------------------------------------------------------------------------- #
 # Stage 2: availability
@@ -367,6 +415,12 @@ def build_parser() -> argparse.ArgumentParser:
             help="months between calendar anchors; lower means more overlap (default: 2)",
         )
 
+    serve_parser = subparsers.add_parser("serve", help="serve the built UI locally")
+    serve_parser.add_argument("--port", type=int, default=8000)
+    serve_parser.add_argument("--host", default="127.0.0.1")
+    serve_parser.add_argument("--ui-dir", type=Path, default=DEFAULT_UI_DIR)
+    serve_parser.add_argument("--data-dir", type=Path, default=DEFAULT_OUT_DIR)
+
     for name in ("discover", "availability", "run"):
         sub = subparsers.add_parser(name)
         sub.add_argument(
@@ -401,7 +455,9 @@ def main(argv: list[str] | None = None) -> int:
     # httpx2 logs a line per request; hundreds of those drown out our own output.
     logging.getLogger("httpx2").setLevel(logging.DEBUG if args.verbose else logging.WARNING)
 
-    if args.command == "discover":
+    if args.command == "serve":
+        serve_module.serve(args.ui_dir, args.data_dir, args.port, args.host)
+    elif args.command == "discover":
         discover(
             regions=args.regions,
             categories=args.categories,
