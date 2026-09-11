@@ -82,6 +82,38 @@ Note that **every matched 1111 site is free/first-come** — the category with t
 most inside-hits needs no booking at all, so `availability` has nothing to add
 for it.
 
+## Browser UI
+
+```sh
+just setup    # mise install + uv sync + npm install
+just ui       # fetch data, build, and serve on http://127.0.0.1:8000
+```
+
+Three views over one shared set of filters — a list, a calendar and a map. The
+map draws the dog-forest outlines under the facility markers, so "is it really
+in the dog forest?" is answerable by eye.
+
+The filters that matter:
+
+* **Nights.** A night is named by the day you arrive, because a booking runs
+  12:00 to 11:00 the next day. **fri–sat and sat–sun are on by default**; the
+  other five are a checkbox each.
+* **Availability.** Tri-state, because most places have no calendar at all:
+  *bookable* (58, real dates), *free / first-come* (244, no booking needed, so
+  free every night) and *booked elsewhere* (36, run by a municipality or private
+  owner through another system).
+* **Certainty.** Five tiers from *inside an official boundary* down to
+  *marker only*, the last being forests with no mapped outline where the
+  distance is measured to a pin. That tier is **off by default**.
+* **Proximity.** Max distance, plus a minimum overlap for the facilities that
+  are themselves areas.
+
+Filter state lives in the URL hash, so a particular view can be bookmarked.
+
+`just dev` runs the Vite dev server with hot reload and reads `output/`
+directly. Node is pinned by `mise.toml` and scoped to this directory; it does
+not interfere with the uv-managed Python.
+
 ## Missing dog-forest boundaries
 
 129 of 505 dog forests have no outline, only a marker. That gap is **real
