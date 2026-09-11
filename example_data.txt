@@ -1,0 +1,11 @@
+Naturstyelsen rip
+
+Hundeskove JSON payload:
+https://udinaturen.dk/api/map/categories/GetCategoriesByUmbId?region=84&umbId=1133&organisation=&kommunekoder=
+
+And with sleepover capabilityL:
+https://udinaturen.dk/api/map/categories/GetCategoriesByUmbId?region=84&umbId=1115&organisation=&kommunekoder=
+
+Example calender response:
+https://book.naturstyrelsen.dk/includes/branding_files/shelterbooking/includes/inc_ajaxgetbookingsforsingleplace.asp?i=15&d=20260406
+
