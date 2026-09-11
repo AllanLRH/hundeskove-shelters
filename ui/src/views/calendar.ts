@@ -1,6 +1,6 @@
 import { nightIndex } from "../data";
 import { passesAttributes, type Filters } from "../filters";
-import { NIGHT_LABELS, type Dataset } from "../types";
+import { DAY_LABELS, NIGHT_LABELS, type Dataset } from "../types";
 
 interface DayCount {
   bookable: number;
@@ -49,7 +49,8 @@ export function renderCalendar(
   const legend = document.createElement("p");
   legend.className = "cal-legend";
   legend.textContent =
-    "Each cell is a night. Top number: bookable places free. Bottom: free/first-come places matching.";
+    "The week runs Monday to Sunday. Each cell is the night you arrive on that day — " +
+    "Fri is the fri–sat night. Top number: bookable places free. Bottom: free/first-come matching.";
   root.append(legend);
 
   if (filters.day) {
@@ -76,12 +77,21 @@ export function renderCalendar(
 
     const grid = document.createElement("div");
     grid.className = "cal-grid";
-    for (const label of NIGHT_LABELS) {
+    // Monday-first, ending Sunday: the Danish/ISO week. The day name is the
+    // arrival day, with the night it opens shown underneath.
+    DAY_LABELS.forEach((label, index) => {
       const head = document.createElement("div");
       head.className = "cal-head";
-      head.textContent = label;
+      if (index >= 5) head.classList.add("weekend-day");
+      const day = document.createElement("span");
+      day.className = "cal-head-day";
+      day.textContent = label;
+      const night = document.createElement("span");
+      night.className = "cal-head-night";
+      night.textContent = `→${DAY_LABELS[(index + 1) % 7]}`;
+      head.append(day, night);
       grid.append(head);
-    }
+    });
 
     // Pad so the first night lands under its weekday column.
     for (let i = 0; i < nightIndex(dates[0]!); i += 1) {

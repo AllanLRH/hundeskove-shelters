@@ -32,7 +32,7 @@ async function start(): Promise<void> {
   let view: ViewName = "list";
   let selected: string | null = null;
 
-  const mapView = new MapView(el("view-map"), (id) => {
+  const mapView = new MapView(el("map-canvas"), (id) => {
     selected = id;
     render();
   });
@@ -79,6 +79,9 @@ async function start(): Promise<void> {
       render();
     });
   }
+
+  el("map-home").addEventListener("click", () => mapView.home());
+  el("map-fit").addEventListener("click", () => mapView.fitToResults());
 
   window.addEventListener("hashchange", () => {
     filters = fromHash(location.hash, data);

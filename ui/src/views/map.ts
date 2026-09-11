@@ -15,11 +15,16 @@ const CONFIDENCE_COLOUR: Record<Confidence, string> = {
   marker_only: "#8b5cf6",
 };
 
-/** Roughly Denmark, used when there is nothing to fit to. */
-const DENMARK: L.LatLngBoundsExpression = [
-  [54.5, 8.0],
-  [57.8, 15.3],
-];
+/**
+ * Copenhagen, the default view.
+ *
+ * Fitting all 338 matches spans the whole country, which zooms out far enough
+ * that the dog-forest outlines — the thing the map exists to show — are smaller
+ * than a pixel. Starting local and letting "Fit to results" zoom out on demand
+ * is far more useful than the reverse.
+ */
+const COPENHAGEN: L.LatLngExpression = [55.6761, 12.5683];
+const DEFAULT_ZOOM = 11;
 
 export class MapView {
   private map: L.Map | null = null;
@@ -35,7 +40,10 @@ export class MapView {
 
   private ensureMap(): L.Map {
     if (this.map) return this.map;
-    const map = L.map(this.container, { preferCanvas: true }).fitBounds(DENMARK);
+    const map = L.map(this.container, { preferCanvas: true }).setView(
+      COPENHAGEN,
+      DEFAULT_ZOOM,
+    );
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
       attribution: "© OpenStreetMap contributors",
@@ -47,17 +55,27 @@ export class MapView {
   }
 
   /**
-   * Re-measure and re-fit after the container becomes visible.
+   * Re-measure after the container becomes visible.
    *
-   * Leaflet reads the container size when it fits bounds, and a hidden tab has
-   * no size, so fitting while hidden lands on a whole-world zoom. Measuring
-   * first and only then re-fitting is what makes switching to the map tab show
-   * the actual results.
+   * Leaflet reads the container size lazily, and a hidden tab has no size, so a
+   * map created or moved while hidden renders wrong until told to re-measure.
    */
   refresh(): void {
-    if (!this.map) return;
-    this.map.invalidateSize();
-    if (this.lastBounds) this.map.fitBounds(this.lastBounds.pad(0.15));
+    this.map?.invalidateSize();
+  }
+
+  /** Zoom out to cover everything currently matching. */
+  fitToResults(): void {
+    if (this.map && this.lastBounds) this.map.fitBounds(this.lastBounds.pad(0.15));
+  }
+
+  hasResults(): boolean {
+    return this.lastBounds !== null;
+  }
+
+  /** Back to the default local view. */
+  home(): void {
+    this.map?.setView(COPENHAGEN, DEFAULT_ZOOM);
   }
 
   drawForests(data: Dataset): void {
@@ -90,7 +108,7 @@ export class MapView {
   }
 
   render(hits: Hit[], selectedId: string | null): void {
-    const map = this.ensureMap();
+    this.ensureMap();
     this.markers.clearLayers();
     this.byId.clear();
 
@@ -116,15 +134,15 @@ export class MapView {
       this.byId.set(facility.shelter_id, marker);
     }
 
-    if (hits.length > 0) {
-      this.lastBounds = L.latLngBounds(
-        hits.map((hit) => [hit.facility.lat, hit.facility.lon] as [number, number]),
-      );
-      // Only fit while actually visible; refresh() handles the hidden case.
-      if (this.container.clientWidth > 0) {
-        map.fitBounds(this.lastBounds.pad(0.15));
-      }
-    }
+    // Deliberately does not move the map. Re-fitting on every filter change
+    // yanks the view away mid-browse, and fitting all results zooms out past
+    // the point where the dog-forest outlines are legible.
+    this.lastBounds =
+      hits.length > 0
+        ? L.latLngBounds(
+            hits.map((hit) => [hit.facility.lat, hit.facility.lon] as [number, number]),
+          )
+        : null;
   }
 
   focus(id: string): void {

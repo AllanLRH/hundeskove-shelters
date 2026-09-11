@@ -91,13 +91,17 @@ just ui       # fetch data, build, and serve on http://127.0.0.1:8000
 
 Three views over one shared set of filters — a list, a calendar and a map. The
 map draws the dog-forest outlines under the facility markers, so "is it really
-in the dog forest?" is answerable by eye.
+in the dog forest?" is answerable by eye. It opens on Copenhagen: fitting all
+338 matches spans the whole country, at which zoom the outlines are smaller than
+a pixel. `Fit to results` zooms out on demand, `Copenhagen` returns.
 
 The filters that matter:
 
 * **Nights.** A night is named by the day you arrive, because a booking runs
   12:00 to 11:00 the next day. **fri–sat and sat–sun are on by default**; the
-  other five are a checkbox each.
+  other five are a checkbox each. The calendar runs **Monday to Sunday**, the
+  Danish/ISO week, and its columns are arrival days — the `Fri` column is the
+  fri–sat night.
 * **Availability.** Tri-state, because most places have no calendar at all:
   *bookable* (58, real dates), *free / first-come* (244, no booking needed, so
   free every night) and *booked elsewhere* (36, run by a municipality or private

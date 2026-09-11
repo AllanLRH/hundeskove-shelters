@@ -92,7 +92,23 @@ export const NIGHT_LABELS = [
   "sun–mon",
 ] as const;
 
-/** Monday = 0 … Sunday = 6, matching NIGHT_LABELS. */
+/**
+ * Weekday of arrival, Monday-first — the Danish/ISO week, which runs Monday to
+ * Sunday. Used for the calendar's column headers, where a bare day name reads
+ * more naturally than a night pair: the "Fri" column is Friday night, i.e. the
+ * fri–sat night.
+ */
+export const DAY_LABELS = [
+  "Mon",
+  "Tue",
+  "Wed",
+  "Thu",
+  "Fri",
+  "Sat",
+  "Sun",
+] as const;
+
+/** Monday = 0 … Sunday = 6, matching NIGHT_LABELS and DAY_LABELS. */
 export type NightIndex = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
 /** fri–sat and sat–sun. */
