@@ -130,6 +130,12 @@ the same card beneath it, with every free night listed rather than a preview.
 The list, the calendar detail and the map selection all render the same card, so
 the information never differs between views.
 
+Each card carries **aerial-view links to Google, Apple and Bing**, each asked for
+its satellite/aerial basemap rather than its default road map — the question
+these answer is what is actually on the ground (tree cover, a clearing, how far
+the water is), which a road map cannot show. OpenStreetMap is there too, greyed,
+since it has no imagery but is the source of this data and drops a pin.
+
 Filter state lives in the URL hash, so a particular view can be bookmarked.
 
 `just dev` runs the Vite dev server with hot reload and reads `output/`

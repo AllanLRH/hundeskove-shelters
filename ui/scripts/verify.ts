@@ -17,6 +17,7 @@ import {
   type Filters,
 } from "../src/filters";
 import type { Availability, Confidence, RawAvailability } from "../src/types";
+import { mapServices } from "../src/views/card";
 
 // npm runs this with cwd = ui/, and the bundle lives elsewhere, so resolve
 // from cwd rather than from the module location.
@@ -138,6 +139,34 @@ check(
   dayBookable.length +
     dayHits.filter((hit) => hit.facility.availability !== "calendar").length ===
     dayHits.length,
+);
+
+// --- external map links ----------------------------------------------------
+// These are user-facing and cannot be eyeballed from here, so assert the URL
+// contract: right coordinates, and each service asked for aerial imagery.
+const sample = data.facilities.find((f) => f.availability === "calendar")!;
+const services = mapServices(sample);
+check(
+  "every map service gets the facility's coordinates",
+  services.every(
+    (s) => s.href.includes(String(sample.lat)) && s.href.includes(String(sample.lon)),
+  ),
+);
+const aerialParam: Record<string, string> = {
+  Google: "basemap=satellite",
+  Apple: "t=k",
+  Bing: "style=h",
+};
+check(
+  "Google, Apple and Bing are asked for satellite/aerial",
+  services
+    .filter((s) => s.label in aerialParam)
+    .every((s) => s.href.includes(aerialParam[s.label]!)),
+  services.map((s) => s.label).join(", "),
+);
+check(
+  "every map link is https",
+  services.every((s) => s.href.startsWith("https://")),
 );
 
 // --- URL round-trip --------------------------------------------------------

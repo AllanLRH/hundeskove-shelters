@@ -151,10 +151,48 @@ function nightsBlock(
   return block;
 }
 
-function linksBlock(facility: Facility): HTMLElement {
-  const links = document.createElement("p");
-  links.className = "links";
+const AERIAL_ZOOM = 18;
 
+/**
+ * Where to look at the terrain around a facility.
+ *
+ * Aerial imagery first, because the question these answer is "what is actually
+ * there" — tree cover, a clearing, how far the water is — which a road map
+ * cannot show. Each service is asked for its satellite/aerial basemap through
+ * its own documented URL scheme rather than its default view.
+ */
+export function mapServices(facility: Facility): { label: string; href: string }[] {
+  const { lat, lon } = facility;
+  return [
+    {
+      label: "Google",
+      // Maps URLs API: map_action=map is the form that accepts basemap.
+      href: `https://www.google.com/maps/@?api=1&map_action=map&center=${lat},${lon}&zoom=${AERIAL_ZOOM}&basemap=satellite`,
+    },
+    {
+      // MapKit URL scheme: t=k is satellite, t=h hybrid.
+      label: "Apple",
+      href: `https://maps.apple.com/?ll=${lat},${lon}&z=${AERIAL_ZOOM}&t=k`,
+    },
+    {
+      // style=h is aerial with labels, style=a aerial without.
+      label: "Bing",
+      href: `https://www.bing.com/maps?cp=${lat}~${lon}&lvl=${AERIAL_ZOOM}&style=h`,
+    },
+    {
+      // No aerial imagery, but it is the source of this data and drops a pin.
+      label: "OSM",
+      href: `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=17/${lat}/${lon}`,
+    },
+  ];
+}
+
+function linksBlock(facility: Facility): HTMLElement {
+  const wrapper = document.createElement("div");
+  wrapper.className = "card-links";
+
+  const primary = document.createElement("p");
+  primary.className = "links";
   const booking = document.createElement("a");
   booking.href = facility.booking_url;
   booking.target = "_blank";
@@ -166,13 +204,24 @@ function linksBlock(facility: Facility): HTMLElement {
       : facility.availability === "unknown"
         ? "Booking is run elsewhere — details"
         : "Details";
+  primary.append(booking);
 
-  const map = document.createElement("a");
-  map.href = `https://www.openstreetmap.org/?mlat=${facility.lat}&mlon=${facility.lon}#map=16/${facility.lat}/${facility.lon}`;
-  map.target = "_blank";
-  map.rel = "noreferrer";
-  map.textContent = "Open in OSM";
+  const aerial = document.createElement("p");
+  aerial.className = "map-links";
+  const caption = document.createElement("span");
+  caption.className = "map-links-label";
+  caption.textContent = "Aerial view:";
+  aerial.append(caption);
+  for (const { label, href } of mapServices(facility)) {
+    const link = document.createElement("a");
+    link.href = href;
+    link.target = "_blank";
+    link.rel = "noreferrer";
+    link.textContent = label;
+    if (label === "OSM") link.title = "OpenStreetMap — map data, no imagery";
+    aerial.append(link);
+  }
 
-  links.append(booking, map);
-  return links;
+  wrapper.append(primary, aerial);
+  return wrapper;
 }
