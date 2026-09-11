@@ -1,0 +1,18 @@
+[project]
+name = "hundeskove"
+version = "0.1.0"
+description = "Find shelters in Danish off-leash dog forests and check their booking availability"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "httpx2>=2.12.0",
+    "shapely>=2.0",
+    "pyproj>=3.6",
+]
+
+[project.scripts]
+hundeskove = "hundeskove.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.9,<0.10"]
+build-backend = "uv_build"
