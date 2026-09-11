@@ -96,6 +96,17 @@ def utm32_to_wgs84(easting: float, northing: float) -> tuple[float, float]:
     return lat, lon
 
 
+def representative_coords(facility: dict) -> tuple[float, float]:
+    """A single (easting, northing) standing in for a facility of any shape.
+
+    Most facilities are a single point, but not all: two shelters, 17 Lejrpladser
+    and 313 Frit teltningsområder are polygons. `representative_point` handles
+    every case and is guaranteed to lie inside the geometry, unlike a centroid.
+    """
+    point = clean_geometry(facility).representative_point()
+    return point.x, point.y
+
+
 def match_shelters(
     shelters: list[dict], dog_forests: list[dict], max_distance_m: float
 ) -> list[Match]:

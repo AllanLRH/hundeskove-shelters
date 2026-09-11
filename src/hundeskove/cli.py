@@ -90,30 +90,30 @@ def discover(
 
     records = []
     for match in matches:
-        shelter = match.shelter
-        easting, northing = shelter["geometry"][0]
+        facility = match.shelter
+        easting, northing = geo.representative_coords(facility)
         lat, lon = geo.utm32_to_wgs84(easting, northing)
         place_id, booking_status = place_ids.get(
-            shelter["id"], (None, booking.STATUS_NOT_BOOKABLE)
+            facility["id"], (None, booking.STATUS_NOT_BOOKABLE)
         )
         records.append(
             {
-                "shelter_id": shelter["id"],
-                "name": shelter["name"],
-                "description": shelter["description"],
+                "shelter_id": facility["id"],
+                "name": facility["name"],
+                "description": facility["description"],
                 "dog_forest_name": match.dog_forest["name"],
                 "dog_forest_id": match.dog_forest["id"],
                 "distance_m": round(match.distance_m, 1),
                 "inside_polygon": match.inside_polygon,
                 "dog_forest_has_boundary": geo.has_boundary(match.dog_forest),
-                "commune_code": shelter["communeCode"],
-                "org": shelter["ansvar_Org"],
-                "bookable": bool(shelter["booking"]),
+                "commune_code": facility["communeCode"],
+                "org": facility["ansvar_Org"],
+                "bookable": bool(facility["booking"]),
                 "place_id": place_id,
                 "booking_status": booking_status,
-                "booking_url": booking.place_url(shelter["id"]),
-                "easting": easting,
-                "northing": northing,
+                "booking_url": booking.place_url(facility["id"]),
+                "easting": round(easting, 1),
+                "northing": round(northing, 1),
                 "lat": round(lat, 6),
                 "lon": round(lon, 6),
             }
@@ -366,7 +366,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.refresh_shelters or not args.shelters.exists():
             discover(
                 regions=args.regions,
-                max_distance_m=args.max_distance,
+                    max_distance_m=args.max_distance,
                 out_path=args.shelters,
                 cache_path=args.cache,
                 use_cache=not args.no_cache,
