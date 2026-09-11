@@ -91,6 +91,35 @@ check(
   !data.facilities.some((f) => f.inside_polygon && !f.dog_forest_has_boundary),
 );
 
+// --- picking a single night ------------------------------------------------
+// What the calendar's day detail and the map's selection both rely on.
+const dayFilters = defaultFilters(data);
+dayFilters.nights = new Set([0, 1, 2, 3, 4, 5, 6]);
+const someFriday = data.allDates.find((date) => nightIndex(date) === 4)!;
+dayFilters.day = someFriday;
+const dayHits = applyFilters(data, dayFilters);
+check(
+  `picking ${someFriday} yields only that night`,
+  dayHits.every((hit) => hit.nights.length === 1 && hit.nights[0] === someFriday),
+);
+const dayBookable = dayHits.filter((hit) => hit.facility.availability === "calendar");
+check(
+  `that night has bookable places to show (${dayBookable.length})`,
+  dayBookable.length > 0,
+);
+check(
+  "every bookable place has a usable booking link",
+  dayBookable.every((hit) =>
+    hit.facility.booking_url.startsWith("https://book.naturstyrelsen.dk/sted/?id="),
+  ),
+);
+check(
+  "the day detail splits into bookable plus the rest, losing nothing",
+  dayBookable.length +
+    dayHits.filter((hit) => hit.facility.availability !== "calendar").length ===
+    dayHits.length,
+);
+
 // --- URL round-trip --------------------------------------------------------
 const tweaked = defaultFilters(data);
 tweaked.maxDistance = 120;

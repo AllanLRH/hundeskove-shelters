@@ -112,6 +112,15 @@ The filters that matter:
 * **Proximity.** Max distance, plus a minimum overlap for the facilities that
   are themselves areas.
 
+**Seeing which places, and booking them.** Clicking a night in the calendar
+opens a detail panel under that month listing the places actually free that
+night, each with a direct booking link. Bookable places are listed in full;
+first-come ones are free every night by definition, so they sit behind a
+disclosure rather than burying the answer. Clicking a marker on the map shows
+the same card beneath it, with every free night listed rather than a preview.
+The list, the calendar detail and the map selection all render the same card, so
+the information never differs between views.
+
 Filter state lives in the URL hash, so a particular view can be bookmarked.
 
 `just dev` runs the Vite dev server with hot reload and reads `output/`

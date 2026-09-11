@@ -1,6 +1,7 @@
 import { nightIndex } from "../data";
-import { passesAttributes, type Filters } from "../filters";
+import { passesAttributes, type Filters, type Hit } from "../filters";
 import { DAY_LABELS, NIGHT_LABELS, type Dataset } from "../types";
+import { facilityCard } from "./card";
 
 interface DayCount {
   bookable: number;
@@ -41,7 +42,10 @@ export function renderCalendar(
   root: HTMLElement,
   data: Dataset,
   filters: Filters,
+  hits: Hit[],
   onPickDay: (date: string | null) => void,
+  onSelect: (id: string) => void,
+  selectedId: string | null,
 ): void {
   root.replaceChildren();
   const counts = countNights(data, filters);
@@ -50,7 +54,8 @@ export function renderCalendar(
   legend.className = "cal-legend";
   legend.textContent =
     "The week runs Monday to Sunday. Each cell is the night you arrive on that day — " +
-    "Fri is the fri–sat night. Top number: bookable places free. Bottom: free/first-come matching.";
+    "Fri is the fri–sat night. Top number: bookable places free. Bottom: free/first-come matching. " +
+    "Click a night to see which places they are.";
   root.append(legend);
 
   if (filters.day) {
@@ -127,5 +132,85 @@ export function renderCalendar(
     }
     section.append(grid);
     root.append(section);
+
+    // Put the detail right under the month it belongs to, so it appears next to
+    // the cell that was clicked rather than somewhere off-screen.
+    if (filters.day && filters.day.slice(0, 7) === month) {
+      root.append(renderDayDetail(filters.day, hits, onSelect, selectedId));
+    }
   }
+}
+
+const DAY_HEADING = new Intl.DateTimeFormat("en-GB", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  timeZone: "UTC",
+});
+
+/**
+ * Which places are free on one night, and where to book them.
+ *
+ * Bookable places are listed in full — they are the ones that need a link and
+ * can run out. First-come places are free every night by definition, so listing
+ * all ~250 of them every time would bury the answer; they go behind a
+ * disclosure with their count.
+ */
+function renderDayDetail(
+  date: string,
+  hits: Hit[],
+  onSelect: (id: string) => void,
+  selectedId: string | null,
+): HTMLElement {
+  const section = document.createElement("section");
+  section.className = "day-detail";
+
+  const heading = document.createElement("h3");
+  const night = nightIndex(date);
+  heading.textContent = `${DAY_HEADING.format(new Date(`${date}T12:00:00Z`))} — the ${NIGHT_LABELS[night]} night`;
+  section.append(heading);
+
+  const bookable = hits.filter((hit) => hit.facility.availability === "calendar");
+  const others = hits.filter((hit) => hit.facility.availability !== "calendar");
+
+  if (bookable.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "empty";
+    empty.textContent = "Nothing bookable is free this night under the current filters.";
+    section.append(empty);
+  } else {
+    const lead = document.createElement("p");
+    lead.className = "detail-lead";
+    lead.textContent = `${bookable.length} bookable place${bookable.length === 1 ? "" : "s"} free:`;
+    section.append(lead);
+    for (const { facility, nights } of bookable) {
+      section.append(
+        facilityCard(facility, nights, {
+          selected: facility.shelter_id === selectedId,
+          onSelect,
+          highlightDate: date,
+        }),
+      );
+    }
+  }
+
+  if (others.length > 0) {
+    const disclosure = document.createElement("details");
+    disclosure.className = "other-places";
+    const summary = document.createElement("summary");
+    summary.textContent = `${others.length} more that need no booking (or are booked elsewhere)`;
+    disclosure.append(summary);
+    for (const { facility, nights } of others) {
+      disclosure.append(
+        facilityCard(facility, nights, {
+          selected: facility.shelter_id === selectedId,
+          onSelect,
+          highlightDate: date,
+        }),
+      );
+    }
+    section.append(disclosure);
+  }
+
+  return section;
 }

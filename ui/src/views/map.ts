@@ -1,11 +1,6 @@
 import L from "leaflet";
 import type { Hit } from "../filters";
-import {
-  AVAILABILITY_LABEL,
-  CONFIDENCE_LABEL,
-  type Confidence,
-  type Dataset,
-} from "../types";
+import { type Confidence, type Dataset } from "../types";
 
 const CONFIDENCE_COLOUR: Record<Confidence, string> = {
   inside: "#1b7f3b",
@@ -112,23 +107,20 @@ export class MapView {
     this.markers.clearLayers();
     this.byId.clear();
 
-    for (const { facility, nights } of hits) {
+    for (const { facility } of hits) {
       const marker = L.circleMarker([facility.lat, facility.lon], {
         radius: facility.shelter_id === selectedId ? 11 : 7,
         color: CONFIDENCE_COLOUR[facility.confidence],
         weight: facility.shelter_id === selectedId ? 3 : 2,
         fillColor: CONFIDENCE_COLOUR[facility.confidence],
-        // Hollow for anything without a real calendar, so certainty is visible
-        // at a glance rather than only in the popup.
+        // Hollow for anything without a real calendar, so availability is
+        // visible at a glance and not only after clicking.
         fillOpacity: facility.availability === "calendar" ? 0.85 : 0.25,
       });
-      marker.bindPopup(
-        `<strong>${escapeHtml(facility.name || "(unnamed)")}</strong><br>` +
-          `${escapeHtml(facility.facility_type)}<br>` +
-          `${escapeHtml(CONFIDENCE_LABEL[facility.confidence])}<br>` +
-          `${escapeHtml(AVAILABILITY_LABEL[facility.availability])} — ${nights.length} matching night(s)<br>` +
-          `<a href="${facility.booking_url}" target="_blank" rel="noreferrer">Booking page</a>`,
-      );
+      // A tooltip names the marker on hover; the full detail — which nights and
+      // where to book — goes in the panel below, where it has room to breathe
+      // and matches what the list and calendar show.
+      marker.bindTooltip(facility.name || "(unnamed)");
       marker.on("click", () => this.onSelect(facility.shelter_id));
       marker.addTo(this.markers);
       this.byId.set(facility.shelter_id, marker);
@@ -149,12 +141,5 @@ export class MapView {
     const marker = this.byId.get(id);
     if (!marker || !this.map) return;
     this.map.setView(marker.getLatLng(), Math.max(this.map.getZoom(), 13));
-    marker.openPopup();
   }
-}
-
-function escapeHtml(value: string): string {
-  const div = document.createElement("div");
-  div.textContent = value;
-  return div.innerHTML;
 }

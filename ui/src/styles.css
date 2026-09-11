@@ -159,3 +159,39 @@ main {
 
 footer { padding: 1rem 1.25rem 2rem; font-size: .8rem; color: var(--muted); border-top: 1px solid var(--line); }
 footer a { color: inherit; }
+
+/* --- shared card detail: night chips, links, day/marker detail panels ----- */
+
+.dates { margin: .45rem 0 0; display: flex; gap: .3rem; flex-wrap: wrap; }
+.dates.note { display: block; color: var(--muted); font-size: .82rem; font-style: italic; }
+.night-chip {
+  font-size: .75rem; padding: .1rem .4rem; border-radius: 4px;
+  border: 1px solid var(--line); background: rgba(27,127,59,.08);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+/* The night you clicked in the calendar, so it stands out among the rest. */
+.night-chip.highlight { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.night-more { font-size: .75rem; color: var(--muted); align-self: center; }
+.links .primary-link { font-weight: 600; }
+
+.day-detail {
+  margin: .5rem 0 1.5rem;
+  padding: .85rem;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: rgba(27,127,59,.05);
+}
+.day-detail h3 { margin: 0 0 .15rem; font-size: 1rem; }
+.detail-lead { margin: 0 0 .6rem; font-size: .85rem; color: var(--muted); }
+
+.other-places { margin-top: .5rem; }
+.other-places summary { cursor: pointer; font-size: .85rem; color: var(--muted); padding: .3rem 0; }
+.other-places[open] summary { margin-bottom: .5rem; }
+
+.map-toolbar { display: flex; gap: .4rem; margin-bottom: .5rem; }
+.map-toolbar button {
+  border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  border-radius: 5px; padding: .3rem .7rem; cursor: pointer; font: inherit; font-size: .82rem;
+}
+#map-detail { margin-top: .75rem; }
+.map-hint { color: var(--muted); font-size: .85rem; margin: 0; }
