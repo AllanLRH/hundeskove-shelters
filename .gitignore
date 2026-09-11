@@ -12,3 +12,7 @@ wheels/
 # Project outputs and caches
 output/
 cache/
+
+# Frontend
+node_modules/
+ui/dist/
