@@ -17,6 +17,24 @@ export function nightIndex(iso: string): NightIndex {
   return ((day + 6) % 7) as NightIndex;
 }
 
+/**
+ * ISO-8601 week number (1-53).
+ *
+ * Weeks start Monday, matching the calendar's own Monday-first columns, and
+ * week 1 is the week containing the year's first Thursday — equivalently, the
+ * week containing 4 January. Computed by shifting to the Thursday of the same
+ * week, which always falls in the correct ISO year, then counting whole weeks
+ * from that year's own week 1.
+ */
+export function isoWeek(iso: string): number {
+  const date = new Date(`${iso}T12:00:00Z`);
+  const weekday = (date.getUTCDay() + 6) % 7; // Monday = 0
+  const thursday = new Date(date);
+  thursday.setUTCDate(date.getUTCDate() - weekday + 3);
+  const yearStart = new Date(Date.UTC(thursday.getUTCFullYear(), 0, 1));
+  return Math.round((thursday.getTime() - yearStart.getTime()) / 604_800_000) + 1;
+}
+
 export function eachDate(startIso: string, endIso: string): string[] {
   const dates: string[] = [];
   const end = Date.parse(`${endIso}T12:00:00Z`);

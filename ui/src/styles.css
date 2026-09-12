@@ -401,8 +401,14 @@ main {
 .clear-day { margin-bottom: .85rem; }
 .cal-month { margin-bottom: 1.4rem; }
 .cal-month h3 { margin: 0 0 .45rem; font-size: .95rem; }
-/* Capped so a night cell stays a readable square, not a huge panel. */
-.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; max-width: 640px; }
+/* Capped so a night cell stays a readable square, not a huge panel. A narrow
+   leading column carries the ISO week number ahead of the seven day columns. */
+.cal-grid {
+  display: grid;
+  grid-template-columns: 2.1rem repeat(7, 1fr);
+  gap: 4px;
+  max-width: 700px;
+}
 .cal-head {
   text-align: center;
   padding-bottom: .3rem;
@@ -413,6 +419,13 @@ main {
 .cal-head-day { font-size: .74rem; font-weight: 600; color: var(--ink); }
 .cal-head-night { font-size: .68rem; color: var(--muted); }
 .cal-head.weekend-day .cal-head-day { color: var(--accent); }
+.cal-week {
+  align-self: center;
+  text-align: center;
+  font-size: .68rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
 
 .cal-cell {
   aspect-ratio: 1;

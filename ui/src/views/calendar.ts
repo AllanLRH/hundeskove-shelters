@@ -1,4 +1,4 @@
-import { nightIndex } from "../data";
+import { isoWeek, nightIndex } from "../data";
 import { passesAttributes, type Filters, type Hit } from "../filters";
 import { DAY_LABELS, NIGHT_LABELS, type Dataset } from "../types";
 import { facilityCard } from "./card";
@@ -82,6 +82,10 @@ export function renderCalendar(
 
     const grid = document.createElement("div");
     grid.className = "cal-grid";
+
+    // A leading column for the week number, so the header row needs a blank
+    // spacer above it.
+    grid.append(document.createElement("div"));
     // Monday-first, ending Sunday: the Danish/ISO week. The day name is the
     // arrival day, with the night it opens shown underneath.
     DAY_LABELS.forEach((label, index) => {
@@ -98,37 +102,61 @@ export function renderCalendar(
       grid.append(head);
     });
 
-    // Pad so the first night lands under its weekday column.
-    for (let i = 0; i < nightIndex(dates[0]!); i += 1) {
-      grid.append(document.createElement("div"));
+    // Group into whole weeks (Monday-first) so a week-number cell can lead
+    // each row. The first and last rows are padded with blanks rather than
+    // days from adjacent months, matching the existing month-by-month layout.
+    const weeks: (string | null)[][] = [];
+    let row: (string | null)[] = new Array(nightIndex(dates[0]!)).fill(null);
+    for (const date of dates) {
+      row.push(date);
+      if (row.length === 7) {
+        weeks.push(row);
+        row = [];
+      }
+    }
+    if (row.length > 0) {
+      weeks.push([...row, ...new Array(7 - row.length).fill(null)]);
     }
 
-    for (const date of dates) {
-      const night = nightIndex(date);
-      const entry = counts.get(date)!;
-      const cell = document.createElement("button");
-      cell.className = "cal-cell";
-      // Dimmed rather than hidden, so the weekend pattern stays readable.
-      if (!filters.nights.has(night)) cell.classList.add("dimmed");
-      if (date < filters.from || date > filters.to) cell.classList.add("dimmed");
-      if (filters.day === date) cell.classList.add("picked");
-      if (entry.bookable === 0 && entry.open === 0) cell.classList.add("none");
+    for (const week of weeks) {
+      const firstDate = week.find((date): date is string => date !== null)!;
+      const weekLabel = document.createElement("div");
+      weekLabel.className = "cal-week";
+      weekLabel.textContent = `W${isoWeek(firstDate)}`;
+      weekLabel.title = `ISO week ${isoWeek(firstDate)}`;
+      grid.append(weekLabel);
 
-      const day = document.createElement("span");
-      day.className = "cal-day";
-      day.textContent = String(Number(date.slice(8, 10)));
-      const bookable = document.createElement("span");
-      bookable.className = "cal-bookable";
-      bookable.textContent = String(entry.bookable);
-      const open = document.createElement("span");
-      open.className = "cal-open";
-      open.textContent = String(entry.open);
-      cell.append(day, bookable, open);
-      cell.title = `${date} (${NIGHT_LABELS[night]}): ${entry.bookable} bookable, ${entry.open} first-come`;
-      cell.addEventListener("click", () =>
-        onPickDay(filters.day === date ? null : date),
-      );
-      grid.append(cell);
+      for (const date of week) {
+        if (date === null) {
+          grid.append(document.createElement("div"));
+          continue;
+        }
+        const night = nightIndex(date);
+        const entry = counts.get(date)!;
+        const cell = document.createElement("button");
+        cell.className = "cal-cell";
+        // Dimmed rather than hidden, so the weekend pattern stays readable.
+        if (!filters.nights.has(night)) cell.classList.add("dimmed");
+        if (date < filters.from || date > filters.to) cell.classList.add("dimmed");
+        if (filters.day === date) cell.classList.add("picked");
+        if (entry.bookable === 0 && entry.open === 0) cell.classList.add("none");
+
+        const day = document.createElement("span");
+        day.className = "cal-day";
+        day.textContent = String(Number(date.slice(8, 10)));
+        const bookable = document.createElement("span");
+        bookable.className = "cal-bookable";
+        bookable.textContent = String(entry.bookable);
+        const open = document.createElement("span");
+        open.className = "cal-open";
+        open.textContent = String(entry.open);
+        cell.append(day, bookable, open);
+        cell.title = `${date} (${NIGHT_LABELS[night]}): ${entry.bookable} bookable, ${entry.open} first-come`;
+        cell.addEventListener("click", () =>
+          onPickDay(filters.day === date ? null : date),
+        );
+        grid.append(cell);
+      }
     }
     section.append(grid);
     root.append(section);

@@ -8,7 +8,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { buildDataset, nightIndex } from "../src/data";
+import { buildDataset, isoWeek, nightIndex } from "../src/data";
 import {
   applyFilters,
   defaultFilters,
@@ -112,6 +112,29 @@ check(
 check(
   "nothing is 'inside' a boundary-less forest",
   !data.facilities.some((f) => f.inside_polygon && !f.dog_forest_has_boundary),
+);
+
+// --- ISO week numbers -------------------------------------------------------
+// Known-tricky cases: the year boundary can fall either way depending on
+// which weekday 1 January lands on.
+check("2026-01-01 (a Thursday) is week 1", isoWeek("2026-01-01") === 1);
+check(
+  "2026-12-28 (the last Monday of 2026) is week 53",
+  isoWeek("2026-12-28") === 53,
+  String(isoWeek("2026-12-28")),
+);
+check(
+  "2027-01-01 (a Friday) belongs to 2026's week 53, not week 1",
+  isoWeek("2027-01-01") === 53,
+  String(isoWeek("2027-01-01")),
+);
+check(
+  "every day in a Mon-Sun week shares one week number",
+  new Set(
+    ["2026-09-07", "2026-09-08", "2026-09-09", "2026-09-10", "2026-09-11", "2026-09-12", "2026-09-13"].map(
+      isoWeek,
+    ),
+  ).size === 1,
 );
 
 // --- picking a single night ------------------------------------------------
