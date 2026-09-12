@@ -1,130 +1,357 @@
+/*
+ * Palette adapted from the VitePress theme used by mise.jdx.dev: warm
+ * off-white / warm near-black backgrounds, a berry brand colour for
+ * interactive chrome, and the VitePress semantic hues (green/yellow/indigo)
+ * for meaning. The berry is the *accent* (links, tabs, selection); green is
+ * reserved for "free / bookable", so the two never fight.
+ *
+ * Theming rules, in this order, so all three states work:
+ *   :root                                  -> the complete light palette
+ *   prefers-color-scheme + :not([light])   -> dark when the OS says so, unless
+ *                                             the user explicitly chose light
+ *   [data-theme="dark"]                    -> dark when the user chose it
+ * Every token is defined on bare :root first, and the two dark blocks must
+ * stay byte-identical in content — they are duplicated by hand.
+ */
 :root {
-  --bg: #fbfaf7;
-  --panel: #ffffff;
-  --ink: #1d2321;
-  --muted: #67716d;
-  --line: #e2e0d9;
-  --accent: #1b7f3b;
-  --conf-inside: #1b7f3b;
-  --conf-inside_osm: #4f9d3a;
-  --conf-overlapping: #c98a00;
-  --conf-near: #2b6cb0;
-  --conf-marker_only: #8b5cf6;
+  color-scheme: light;
+
+  --bg: #fffcf9;
+  --bg-alt: #f7f3ef;
+  --surface: #ffffff;
+  --surface-2: #f4efeb;
+  --ink: #2c2428;
+  --muted: #60565b;
+  --line: #e2d9d3;
+  --line-strong: #cbbdb4;
+
+  --accent: #8b2252;
+  --accent-strong: #721a43;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(139, 34, 82, 0.08);
+
+  --ok: #18794e;
+  --ok-soft: rgba(24, 121, 78, 0.1);
+  --focus: #3451b2;
+
+  --conf-inside: #18794e;
+  --conf-inside_osm: #4a8f34;
+  --conf-overlapping: #915930;
+  --conf-near: #3451b2;
+  --conf-marker_only: #7c4dd1;
+
+  --danger: #b8272c;
+
+  --radius: 10px;
+  --radius-sm: 6px;
+  --shadow: 0 1px 2px rgba(44, 36, 40, 0.05), 0 4px 12px rgba(44, 36, 40, 0.04);
+  --shadow-lift: 0 2px 6px rgba(44, 36, 40, 0.09), 0 10px 24px rgba(44, 36, 40, 0.07);
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #14171a;
-    --panel: #1c2024;
-    --ink: #e8eae7;
-    --muted: #9aa3a0;
-    --line: #2d3338;
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --bg: #191619;
+    --bg-alt: #211d21;
+    --surface: #211d21;
+    --surface-2: #292329;
+    --ink: #f1e9ed;
+    --muted: #c1b3bc;
+    --line: #3b323a;
+    --line-strong: #64535e;
+
+    --accent: #ed9fbc;
+    --accent-strong: #f5bbd0;
+    --accent-ink: #2c1220;
+    --accent-soft: rgba(237, 159, 188, 0.12);
+
+    --ok: #3dd68c;
+    --ok-soft: rgba(61, 214, 140, 0.12);
+    --focus: #a8b1ff;
+
+    --conf-inside: #3dd68c;
+    --conf-inside_osm: #8ac977;
+    --conf-overlapping: #f9b44e;
+    --conf-near: #a8b1ff;
+    --conf-marker_only: #c8a6f7;
+
+    --danger: #f66f81;
+
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-lift: 0 4px 18px rgba(0, 0, 0, 0.5);
   }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #191619;
+  --bg-alt: #211d21;
+  --surface: #211d21;
+  --surface-2: #292329;
+  --ink: #f1e9ed;
+  --muted: #c1b3bc;
+  --line: #3b323a;
+  --line-strong: #64535e;
+
+  --accent: #ed9fbc;
+  --accent-strong: #f5bbd0;
+  --accent-ink: #2c1220;
+  --accent-soft: rgba(237, 159, 188, 0.12);
+
+  --ok: #3dd68c;
+  --ok-soft: rgba(61, 214, 140, 0.12);
+  --focus: #a8b1ff;
+
+  --conf-inside: #3dd68c;
+  --conf-inside_osm: #8ac977;
+  --conf-overlapping: #f9b44e;
+  --conf-near: #a8b1ff;
+  --conf-marker_only: #c8a6f7;
+
+  --danger: #f66f81;
+
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-lift: 0 4px 18px rgba(0, 0, 0, 0.5);
 }
 
 * { box-sizing: border-box; }
 
 body {
   margin: 0;
-  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   background: var(--bg);
   color: var(--ink);
+  -webkit-font-smoothing: antialiased;
 }
+
+a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+a:hover { color: var(--accent-strong); text-decoration-thickness: 2px; }
+
+/* One visible focus treatment everywhere, rather than per-control guesswork.
+   No border-radius here: browsers already draw the outline following the
+   element's own radius, and setting one unconditionally squared off pills
+   (the theme toggle) and rounded rectangles (quick buttons, calendar cells)
+   back down to 4px while focused. */
+:where(a, button, input, summary):focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* --- header ---------------------------------------------------------------- */
 
 header {
-  padding: 1rem 1.25rem 0;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding: .85rem 1.25rem 0;
+  /* Opaque fallback first: Vite's build target includes engines (Safari 14)
+     that do not support color-mix(), which drops the whole declaration at
+     parse time and would otherwise leave the sticky header fully transparent
+     — content scrolling visibly through the title and tabs. The color-mix
+     line below only takes effect where it is understood. */
+  background: var(--bg);
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--line);
 }
-header h1 { margin: 0 0 .25rem; font-size: 1.2rem; }
-#status { margin: 0 0 .75rem; color: var(--muted); font-size: .9rem; }
-#status.error { color: #c0392b; }
 
-.tabs { display: flex; gap: .25rem; }
+.header-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 1.15rem;
+  letter-spacing: -0.01em;
+}
+
+#status { margin: .2rem 0 .7rem; color: var(--muted); font-size: .875rem; }
+#status.error { color: var(--danger); font-weight: 500; }
+
+#theme-toggle {
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: .3rem .75rem;
+  cursor: pointer;
+  font: inherit;
+  font-size: .8rem;
+  line-height: 1.4;
+  white-space: nowrap;
+  transition: background .15s, border-color .15s;
+}
+#theme-toggle:hover { background: var(--surface-2); border-color: var(--muted); }
+
+.tabs { display: flex; gap: .2rem; }
 .tabs button {
-  border: 1px solid var(--line);
+  border: 1px solid transparent;
   border-bottom: none;
   background: transparent;
   color: var(--muted);
-  padding: .5rem 1rem;
-  border-radius: 6px 6px 0 0;
+  padding: .5rem 1.05rem;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   cursor: pointer;
   font: inherit;
+  font-size: .92rem;
+  position: relative;
+  top: 1px;
+  transition: color .15s, background .15s;
 }
-.tabs button.active { background: var(--panel); color: var(--ink); font-weight: 600; }
+.tabs button:hover { color: var(--ink); background: var(--surface-2); }
+.tabs button.active {
+  background: var(--bg);
+  color: var(--ink);
+  font-weight: 600;
+  border-color: var(--line);
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+
+/* --- layout ---------------------------------------------------------------- */
 
 main {
   display: grid;
-  grid-template-columns: minmax(240px, 300px) 1fr;
-  gap: 1rem;
-  padding: 1rem 1.25rem;
+  grid-template-columns: minmax(250px, 300px) minmax(0, 1fr);
+  gap: 1.25rem;
+  padding: 1.25rem;
   align-items: start;
+  max-width: 1600px;
+  margin: 0 auto;
 }
-@media (max-width: 800px) { main { grid-template-columns: 1fr; } }
+@media (max-width: 860px) { main { grid-template-columns: 1fr; gap: 1rem; } }
 
+/* The filter panel reads as a VitePress sidebar: tinted, not floating. */
 #panel {
-  background: var(--panel);
+  background: var(--bg-alt);
   border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: .75rem;
+  border-radius: var(--radius);
+  padding: .9rem 1rem;
   position: sticky;
-  top: .5rem;
-  max-height: calc(100vh - 1rem);
+  top: 7.5rem;
+  max-height: calc(100vh - 8.5rem);
   overflow-y: auto;
 }
-@media (max-width: 800px) { #panel { position: static; max-height: none; } }
+@media (max-width: 860px) { #panel { position: static; max-height: none; } }
 
-.filter-group { margin-bottom: 1rem; }
-.filter-group h2 { margin: 0 0 .25rem; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
-.hint { margin: 0 0 .5rem; font-size: .78rem; color: var(--muted); }
-
-.toggle { display: flex; gap: .4rem; align-items: center; padding: .12rem 0; cursor: pointer; font-size: .88rem; }
-.night-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 .5rem; }
-.toggle.weekend span { font-weight: 600; }
-.row-buttons { display: flex; gap: .4rem; margin-top: .4rem; }
-.quick, .clear-day {
-  border: 1px solid var(--line); background: transparent; color: var(--ink);
-  border-radius: 5px; padding: .25rem .6rem; cursor: pointer; font: inherit; font-size: .8rem;
+.filter-group { margin-bottom: 1.15rem; }
+.filter-group:last-child { margin-bottom: .25rem; }
+.filter-group h2 {
+  margin: 0 0 .3rem;
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--muted);
+  font-weight: 700;
 }
-.field { display: block; margin-bottom: .5rem; font-size: .85rem; }
-.field span { display: block; color: var(--muted); margin-bottom: .15rem; }
-.field input { width: 100%; }
+.hint { margin: 0 0 .55rem; font-size: .775rem; color: var(--muted); line-height: 1.45; }
+
+.toggle {
+  display: flex;
+  gap: .45rem;
+  align-items: center;
+  padding: .2rem .3rem;
+  margin: 0 -.3rem;
+  cursor: pointer;
+  font-size: .875rem;
+  border-radius: var(--radius-sm);
+  transition: background .12s;
+}
+.toggle:hover { background: var(--surface-2); }
+.toggle input { accent-color: var(--accent); margin: 0; }
+.night-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 .4rem; }
+.toggle.weekend span { font-weight: 600; }
+
+.row-buttons { display: flex; gap: .4rem; margin-top: .5rem; }
+.quick, .clear-day {
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: var(--radius-sm);
+  padding: .3rem .65rem;
+  cursor: pointer;
+  font: inherit;
+  font-size: .8rem;
+  transition: background .15s, border-color .15s;
+}
+.quick:hover, .clear-day:hover { background: var(--surface-2); border-color: var(--muted); }
+
+.field { display: block; margin-bottom: .6rem; font-size: .85rem; }
+.field span { display: block; color: var(--muted); margin-bottom: .2rem; font-size: .8rem; }
+.field input[type="date"] {
+  width: 100%;
+  padding: .3rem .45rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: .85rem;
+}
+.field input[type="range"] { width: 100%; accent-color: var(--accent); }
 
 .view { min-width: 0; }
-#map-canvas { height: 72vh; border: 1px solid var(--line); border-radius: 8px; }
-.map-toolbar { display: flex; gap: .4rem; margin-bottom: .5rem; }
-.map-toolbar button {
-  border: 1px solid var(--line); background: var(--panel); color: var(--ink);
-  border-radius: 5px; padding: .3rem .7rem; cursor: pointer; font: inherit; font-size: .82rem;
-}
+
+/* --- cards ----------------------------------------------------------------- */
 
 .card {
-  background: var(--panel);
+  background: var(--surface);
   border: 1px solid var(--line);
-  border-left: 4px solid var(--line);
-  border-radius: 8px;
-  padding: .7rem .85rem;
-  margin-bottom: .6rem;
-  cursor: pointer;
+  border-left: 3px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: .85rem 1rem;
+  margin-bottom: .7rem;
+  box-shadow: var(--shadow);
+  transition: box-shadow .15s, border-color .15s, transform .12s;
 }
-.card.selected { border-left-color: var(--accent); box-shadow: 0 0 0 2px rgba(27,127,59,.18); }
-.card h3 { margin: 0 0 .2rem; font-size: 1rem; display: flex; gap: .5rem; align-items: baseline; flex-wrap: wrap; }
-.card .type { font-size: .78rem; font-weight: 400; color: var(--muted); }
-.forest { margin: 0 0 .4rem; font-size: .86rem; color: var(--muted); }
-.description { margin: .35rem 0 0; font-size: .85rem; color: var(--muted); }
-.dates { margin: .35rem 0 0; font-size: .8rem; font-variant-numeric: tabular-nums; }
-.links { margin: .5rem 0 0; display: flex; gap: .9rem; font-size: .85rem; }
-.links a { color: var(--accent); }
+.card[tabindex] { cursor: pointer; }
+.card[tabindex]:hover { box-shadow: var(--shadow-lift); transform: translateY(-1px); }
+.card.selected {
+  border-left-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft), var(--shadow-lift);
+}
+
+.card h3 {
+  margin: 0 0 .25rem;
+  font-size: 1rem;
+  line-height: 1.35;
+  display: flex;
+  gap: .5rem;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.card .type { font-size: .76rem; font-weight: 400; color: var(--muted); }
+.forest { margin: 0 0 .45rem; font-size: .85rem; color: var(--muted); }
+.description { margin: .4rem 0 0; font-size: .85rem; color: var(--muted); line-height: 1.5; }
 
 .badges { margin: 0; display: flex; gap: .35rem; flex-wrap: wrap; }
-.badge { font-size: .72rem; padding: .12rem .45rem; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; }
+.badge {
+  font-size: .715rem;
+  padding: .14rem .5rem;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  color: var(--muted);
+  white-space: nowrap;
+  font-weight: 500;
+}
 .badge.conf-inside { border-color: var(--conf-inside); color: var(--conf-inside); }
 .badge.conf-inside_osm { border-color: var(--conf-inside_osm); color: var(--conf-inside_osm); }
 .badge.conf-overlapping { border-color: var(--conf-overlapping); color: var(--conf-overlapping); }
 .badge.conf-near { border-color: var(--conf-near); color: var(--conf-near); }
-/* Marker-only is a weaker claim; dashed so it never reads as confirmed. */
-.badge.conf-marker_only { border-color: var(--conf-marker_only); color: var(--conf-marker_only); border-style: dashed; }
-.badge.avail-calendar { background: rgba(27,127,59,.12); }
-.badge.avail-unknown { border-style: dashed; color: var(--muted); }
+/* Dashed: a weaker claim than the others, and it should never read as confirmed. */
+.badge.conf-marker_only {
+  border-color: var(--conf-marker_only);
+  color: var(--conf-marker_only);
+  border-style: dashed;
+}
+.badge.avail-calendar { background: var(--ok-soft); color: var(--ok); border-color: transparent; }
+.badge.avail-unknown { border-style: dashed; }
+.badge.nights { background: var(--surface-2); border-color: transparent; color: var(--ink); }
 
 .toggle.conf-inside span { color: var(--conf-inside); }
 .toggle.conf-inside_osm span { color: var(--conf-inside_osm); }
@@ -132,81 +359,180 @@ main {
 .toggle.conf-near span { color: var(--conf-near); }
 .toggle.conf-marker_only span { color: var(--conf-marker_only); }
 
-.empty { color: var(--muted); }
-
-.cal-legend { font-size: .82rem; color: var(--muted); margin: 0 0 .5rem; }
-.clear-day { margin-bottom: .75rem; }
-.cal-month { margin-bottom: 1.25rem; }
-.cal-month h3 { margin: 0 0 .35rem; font-size: .95rem; }
-/* Cap the width so a night cell stays a readable square, not a huge panel. */
-.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; max-width: 620px; }
-.cal-head { text-align: center; padding-bottom: .25rem; line-height: 1.15; }
-.cal-head-day { display: block; font-size: .76rem; font-weight: 600; color: var(--ink); }
-.cal-head-night { display: block; font-size: .6rem; color: var(--muted); }
-/* Sat and Sun close the week; tint them so Monday-to-Sunday reads at a glance. */
-.cal-head.weekend-day .cal-head-day { color: var(--accent); }
-.cal-cell {
-  aspect-ratio: 1; border: 1px solid var(--line); background: var(--panel); color: var(--ink);
-  border-radius: 5px; cursor: pointer; display: grid; place-content: center; gap: 0;
-  font: inherit; padding: 2px; font-variant-numeric: tabular-nums;
-}
-.cal-cell .cal-day { font-size: .68rem; color: var(--muted); }
-.cal-cell .cal-bookable { font-size: .95rem; font-weight: 600; color: var(--accent); }
-.cal-cell .cal-open { font-size: .7rem; color: var(--muted); }
-.cal-cell.dimmed { opacity: .3; }
-.cal-cell.none .cal-bookable { color: var(--muted); font-weight: 400; }
-.cal-cell.picked { outline: 2px solid var(--accent); }
-
-footer { padding: 1rem 1.25rem 2rem; font-size: .8rem; color: var(--muted); border-top: 1px solid var(--line); }
-footer a { color: inherit; }
-
-/* --- shared card detail: night chips, links, day/marker detail panels ----- */
-
-.dates { margin: .45rem 0 0; display: flex; gap: .3rem; flex-wrap: wrap; }
+.dates { margin: .5rem 0 0; display: flex; gap: .3rem; flex-wrap: wrap; }
 .dates.note { display: block; color: var(--muted); font-size: .82rem; font-style: italic; }
 .night-chip {
-  font-size: .75rem; padding: .1rem .4rem; border-radius: 4px;
-  border: 1px solid var(--line); background: rgba(27,127,59,.08);
-  font-variant-numeric: tabular-nums; white-space: nowrap;
+  font-size: .74rem;
+  padding: .12rem .45rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
-/* The night you clicked in the calendar, so it stands out among the rest. */
-.night-chip.highlight { border-color: var(--accent); color: var(--accent); font-weight: 600; }
-.night-more { font-size: .75rem; color: var(--muted); align-self: center; }
-.links .primary-link { font-weight: 600; }
+.night-chip.highlight {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+.night-more { font-size: .74rem; color: var(--muted); align-self: center; }
 
-.card-links { margin-top: .5rem; }
-.card-links .links { margin: 0; }
+.card-links { margin-top: .65rem; padding-top: .55rem; border-top: 1px solid var(--line); }
+.links { margin: 0; display: flex; gap: .9rem; font-size: .875rem; }
+.links .primary-link { font-weight: 600; }
 .map-links {
-  margin: .3rem 0 0;
+  margin: .35rem 0 0;
   display: flex;
-  gap: .55rem;
+  gap: .6rem;
   flex-wrap: wrap;
   align-items: baseline;
   font-size: .82rem;
 }
-.map-links-label { color: var(--muted); font-size: .78rem; }
-.map-links a { color: var(--accent); }
+.map-links-label { color: var(--muted); font-size: .775rem; }
 /* OSM is the odd one out: map data, not imagery. */
 .map-links a[title] { color: var(--muted); }
 
+.empty { color: var(--muted); }
+
+/* --- calendar -------------------------------------------------------------- */
+
+.cal-legend { font-size: .82rem; color: var(--muted); margin: 0 0 .6rem; line-height: 1.5; max-width: 62ch; }
+.clear-day { margin-bottom: .85rem; }
+.cal-month { margin-bottom: 1.4rem; }
+.cal-month h3 { margin: 0 0 .45rem; font-size: .95rem; }
+/* Capped so a night cell stays a readable square, not a huge panel. */
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; max-width: 640px; }
+.cal-head {
+  text-align: center;
+  padding-bottom: .3rem;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+.cal-head-day { font-size: .74rem; font-weight: 600; color: var(--ink); }
+.cal-head-night { font-size: .68rem; color: var(--muted); }
+.cal-head.weekend-day .cal-head-day { color: var(--accent); }
+
+.cal-cell {
+  aspect-ratio: 1;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: grid;
+  place-content: center;
+  font: inherit;
+  padding: 2px;
+  font-variant-numeric: tabular-nums;
+  transition: border-color .12s, background .12s, transform .1s;
+}
+.cal-cell:hover { border-color: var(--accent); transform: scale(1.04); }
+.cal-cell .cal-day { font-size: .68rem; color: var(--muted); }
+.cal-cell .cal-bookable { font-size: 1rem; font-weight: 700; color: var(--ok); }
+.cal-cell .cal-open { font-size: .68rem; color: var(--muted); }
+/* Filtered-out nights read as "not selected", not "unreadable": opacity alone
+   dropped body text to ~1.5:1 against the page background, well under the
+   4.5:1 WCAG floor, on the majority of cells in the default (weekend-only)
+   view. The cell is still clickable — picking a dimmed night is how you widen
+   the filter to it — so it needs to stay legible, just visually secondary. */
+.cal-cell.dimmed { background: var(--surface-2); }
+.cal-cell.dimmed .cal-day,
+.cal-cell.dimmed .cal-bookable,
+.cal-cell.dimmed .cal-open { color: var(--muted); }
+.cal-cell.dimmed .cal-bookable { font-weight: 500; }
+.cal-cell.none .cal-bookable { color: var(--muted); font-weight: 400; }
+.cal-cell.picked {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  background: var(--accent-soft);
+}
+/* .picked's own outline (specificity 0,2,0) otherwise beats the shared
+   :where(...):focus-visible rule (0,1,0), so a keyboard user tabbing onto the
+   picked cell saw no focus indicator at all. */
+.cal-cell.picked:focus-visible {
+  outline-color: var(--focus);
+  outline-offset: 2px;
+}
+
 .day-detail {
-  margin: .5rem 0 1.5rem;
-  padding: .85rem;
+  margin: .6rem 0 1.6rem;
+  padding: .95rem 1rem;
   border: 1px solid var(--accent);
-  border-radius: 8px;
-  background: rgba(27,127,59,.05);
+  border-radius: var(--radius);
+  background: var(--accent-soft);
 }
-.day-detail h3 { margin: 0 0 .15rem; font-size: 1rem; }
-.detail-lead { margin: 0 0 .6rem; font-size: .85rem; color: var(--muted); }
+.day-detail h3 { margin: 0 0 .2rem; font-size: 1rem; }
+.detail-lead { margin: 0 0 .7rem; font-size: .85rem; color: var(--muted); }
+.other-places { margin-top: .6rem; }
+.other-places summary {
+  cursor: pointer;
+  font-size: .85rem;
+  color: var(--muted);
+  padding: .35rem 0;
+}
+.other-places summary:hover { color: var(--ink); }
+.other-places[open] summary { margin-bottom: .6rem; }
 
-.other-places { margin-top: .5rem; }
-.other-places summary { cursor: pointer; font-size: .85rem; color: var(--muted); padding: .3rem 0; }
-.other-places[open] summary { margin-bottom: .5rem; }
+/* --- map ------------------------------------------------------------------- */
 
-.map-toolbar { display: flex; gap: .4rem; margin-bottom: .5rem; }
+.map-toolbar { display: flex; gap: .4rem; margin-bottom: .6rem; }
 .map-toolbar button {
-  border: 1px solid var(--line); background: var(--panel); color: var(--ink);
-  border-radius: 5px; padding: .3rem .7rem; cursor: pointer; font: inherit; font-size: .82rem;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: var(--radius-sm);
+  padding: .35rem .75rem;
+  cursor: pointer;
+  font: inherit;
+  font-size: .82rem;
+  transition: background .15s, border-color .15s;
 }
-#map-detail { margin-top: .75rem; }
+.map-toolbar button:hover { background: var(--surface-2); border-color: var(--muted); }
+
+#map-canvas {
+  height: 70vh;
+  min-height: 380px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+#map-detail { margin-top: .85rem; }
 .map-hint { color: var(--muted); font-size: .85rem; margin: 0; }
+
+/* Leaflet's own chrome is light by default; match it to the page. */
+.leaflet-container { background: var(--surface-2); border-radius: var(--radius); }
+.leaflet-bar a,
+.leaflet-control-attribution {
+  background: var(--surface) !important;
+  color: var(--ink) !important;
+}
+.leaflet-bar a:hover { background: var(--surface-2) !important; }
+.leaflet-control-attribution a { color: var(--accent) !important; }
+/* The tiles themselves are light imagery; dim them slightly in dark mode so
+   they do not glare against the surrounding chrome. */
+:root[data-theme="dark"] .leaflet-tile-pane { filter: brightness(0.82) saturate(0.9); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .leaflet-tile-pane {
+    filter: brightness(0.82) saturate(0.9);
+  }
+}
+
+/* --- footer ---------------------------------------------------------------- */
+
+footer {
+  padding: 1.25rem;
+  font-size: .8rem;
+  color: var(--muted);
+  border-top: 1px solid var(--line);
+  max-width: 1600px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+footer a { color: inherit; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+  .card[tabindex]:hover, .cal-cell:hover { transform: none; }
+}

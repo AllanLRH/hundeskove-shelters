@@ -17,6 +17,7 @@ import {
   type Filters,
 } from "../src/filters";
 import type { Availability, Confidence, RawAvailability } from "../src/types";
+import { STORAGE_KEY } from "../src/theme";
 import { mapServices } from "../src/views/card";
 
 // npm runs this with cwd = ui/, and the bundle lives elsewhere, so resolve
@@ -197,6 +198,20 @@ check("a blank name still pins with a fallback label", blank.includes("q=Shelter
 check(
   "every map link is https",
   services.every((s) => s.href.startsWith("https://")),
+);
+
+// --- theme -----------------------------------------------------------------
+// The pre-paint script in index.html duplicates the storage key by necessity
+// (it must run before any module loads). Assert the two cannot drift apart.
+const html = readFileSync(resolve(process.cwd(), "index.html"), "utf8");
+check(
+  "the pre-paint theme script uses the same storage key as theme.ts",
+  html.includes(`localStorage.getItem("${STORAGE_KEY}")`),
+  STORAGE_KEY,
+);
+check(
+  "the pre-paint script is a classic script, so Vite cannot defer it",
+  /<script>\s*\/\*[\s\S]*?localStorage/.test(html),
 );
 
 // --- URL round-trip --------------------------------------------------------

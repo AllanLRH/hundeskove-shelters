@@ -4,10 +4,26 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Hundeskove — sleeping out with a dog</title>
+    <script>
+      /* Deliberately a classic inline script, not a module: Vite bundles inline
+         modules into the deferred main chunk, which runs after first paint and
+         flashes white at dark-mode users. The storage key is asserted to match
+         theme.ts in ui/scripts/verify.ts. */
+      try {
+        var t = localStorage.getItem("hundeskove:theme");
+        if (t === "light" || t === "dark")
+          document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {
+        /* private browsing can throw; the media query still handles it */
+      }
+    </script>
   </head>
   <body>
     <header>
-      <h1>Sleeping out with a dog</h1>
+      <div class="header-top">
+        <h1>Sleeping out with a dog</h1>
+        <button id="theme-toggle" type="button">◐ Auto</button>
+      </div>
       <p id="status">Loading…</p>
       <nav class="tabs">
         <button id="tab-list" class="active">List</button>

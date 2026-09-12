@@ -2,12 +2,14 @@ import L from "leaflet";
 import type { Hit } from "../filters";
 import { type Confidence, type Dataset } from "../types";
 
+// Markers sit on light map tiles in both themes (dark mode only dims them),
+// so these stay the light-palette semantic hues from styles.css.
 const CONFIDENCE_COLOUR: Record<Confidence, string> = {
-  inside: "#1b7f3b",
-  inside_osm: "#4f9d3a",
-  overlapping: "#c98a00",
-  near: "#2b6cb0",
-  marker_only: "#8b5cf6",
+  inside: "#18794e",
+  inside_osm: "#4a8f34",
+  overlapping: "#a8720a",
+  near: "#3451b2",
+  marker_only: "#7c4dd1",
 };
 
 /**

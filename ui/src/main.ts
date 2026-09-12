@@ -4,6 +4,7 @@ import "./styles.css";
 import { loadDataset } from "./data";
 import { applyFilters, fromHash, toHash, type Filters, type Hit } from "./filters";
 import { renderPanel } from "./panel";
+import { initTheme } from "./theme";
 import { facilityCard } from "./views/card";
 import { renderCalendar } from "./views/calendar";
 import { renderList } from "./views/list";
@@ -19,6 +20,8 @@ const el = <T extends HTMLElement>(id: string): T => {
 };
 
 async function start(): Promise<void> {
+  initTheme(el<HTMLButtonElement>("theme-toggle"));
+
   const status = el("status");
   let data: Dataset;
   try {
