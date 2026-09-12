@@ -55,20 +55,37 @@ export function defaultFilters(data: Dataset): Filters {
   };
 }
 
-/** Nights of this facility that survive the night-type, range and day filters. */
-export function matchingNights(facility: Facility, filters: Filters): string[] {
+/**
+ * Nights of this facility that survive the day filter, and — unless told to
+ * skip them — the night-of-week and date-range filters too.
+ *
+ * The calendar view deliberately skips those two: its whole purpose is to
+ * show every night across the full horizon regardless of which nights or
+ * dates the list and map are currently narrowed to, so clicking a cell the
+ * list has filtered away should still show what is actually free that night
+ * rather than an empty result. `filters.day` is a different thing — it is the
+ * calendar's own click-to-narrow interaction, not one of the two excluded
+ * filters, so it still applies in both modes.
+ */
+export function matchingNights(
+  facility: Facility,
+  filters: Filters,
+  { respectNightAndRange = true }: { respectNightAndRange?: boolean } = {},
+): string[] {
   const out: string[] = [];
   for (let i = 0; i < facility.nights.length; i += 1) {
     const date = facility.nights[i]!;
-    if (date < filters.from || date > filters.to) continue;
-    if (!filters.nights.has(facility.nightIndices[i]!)) continue;
+    if (respectNightAndRange) {
+      if (date < filters.from || date > filters.to) continue;
+      if (!filters.nights.has(facility.nightIndices[i]!)) continue;
+    }
     if (filters.day !== null && date !== filters.day) continue;
     out.push(date);
   }
   return out;
 }
 
-/** Everything except the night filters — used by the calendar, which counts nights. */
+/** Every filter except the ones about *when*: availability, certainty, type, proximity. */
 export function passesAttributes(facility: Facility, filters: Filters): boolean {
   if (!filters.availability.has(facility.availability)) return false;
   if (!filters.confidence.has(facility.confidence)) return false;
@@ -85,7 +102,17 @@ export interface Hit {
   nights: string[];
 }
 
-/** The single source of truth every view reads from. */
+function sortHits(hits: Hit[]): Hit[] {
+  const rank = new Map(CONFIDENCE_ORDER.map((c, i) => [c, i]));
+  return hits.sort(
+    (a, b) =>
+      rank.get(a.facility.confidence)! - rank.get(b.facility.confidence)! ||
+      a.facility.distance_m - b.facility.distance_m ||
+      a.facility.name.localeCompare(b.facility.name, "da"),
+  );
+}
+
+/** The list and map read from this. */
 export function applyFilters(data: Dataset, filters: Filters): Hit[] {
   const hits: Hit[] = [];
   for (const facility of data.facilities) {
@@ -94,14 +121,22 @@ export function applyFilters(data: Dataset, filters: Filters): Hit[] {
     if (nights.length === 0) continue;
     hits.push({ facility, nights });
   }
-  const rank = new Map(CONFIDENCE_ORDER.map((c, i) => [c, i]));
-  hits.sort(
-    (a, b) =>
-      rank.get(a.facility.confidence)! - rank.get(b.facility.confidence)! ||
-      a.facility.distance_m - b.facility.distance_m ||
-      a.facility.name.localeCompare(b.facility.name, "da"),
-  );
-  return hits;
+  return sortHits(hits);
+}
+
+/**
+ * The calendar's day-detail reads from this instead of `applyFilters`: same
+ * result, minus the night-of-week and date-range narrowing.
+ */
+export function applyCalendarFilters(data: Dataset, filters: Filters): Hit[] {
+  const hits: Hit[] = [];
+  for (const facility of data.facilities) {
+    if (!passesAttributes(facility, filters)) continue;
+    const nights = matchingNights(facility, filters, { respectNightAndRange: false });
+    if (nights.length === 0) continue;
+    hits.push({ facility, nights });
+  }
+  return sortHits(hits);
 }
 
 // --- URL hash round-trip, so a filtered view can be linked or reloaded ------ //

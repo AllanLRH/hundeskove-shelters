@@ -10,6 +10,7 @@ import { resolve } from "node:path";
 
 import { buildDataset, isoWeek, nightIndex } from "../src/data";
 import {
+  applyCalendarFilters,
   applyFilters,
   defaultFilters,
   fromHash,
@@ -136,6 +137,42 @@ check(
     ),
   ).size === 1,
 );
+
+// --- the calendar ignores Nights and Dates, but not the other filters -----
+{
+  const scoped = defaultFilters(data); // weekend-only nights, full date range
+  const listHits = applyFilters(data, scoped);
+  const calHits = applyCalendarFilters(data, scoped);
+
+  check(
+    "the list stays weekend-only under the default filters",
+    listHits.every((hit) => hit.nights.every((date) => nightIndex(date) === 4 || nightIndex(date) === 5)),
+  );
+  check(
+    "the calendar includes non-weekend nights the list does not",
+    calHits.some((hit) => hit.nights.some((date) => nightIndex(date) !== 4 && nightIndex(date) !== 5)),
+  );
+
+  const narrowed = defaultFilters(data);
+  narrowed.nights = new Set([0, 1, 2, 3, 4, 5, 6]);
+  narrowed.from = data.horizonStart;
+  narrowed.to = data.allDates[6]!; // first week of the horizon only
+  const narrowList = applyFilters(data, narrowed);
+  const narrowCal = applyCalendarFilters(data, narrowed);
+  check(
+    "a tightened date range still narrows the list",
+    narrowList.every((hit) => hit.nights.every((date) => date <= narrowed.to)),
+  );
+  check(
+    "but not the calendar",
+    narrowCal.some((hit) => hit.nights.some((date) => date > narrowed.to)),
+  );
+
+  check(
+    "the calendar still respects non-time filters (facility type, confidence, ...)",
+    calHits.every((hit) => scoped.facilityTypes.has(hit.facility.facility_type)),
+  );
+}
 
 // --- picking a single night ------------------------------------------------
 // What the calendar's day detail and the map's selection both rely on.

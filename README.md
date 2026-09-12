@@ -97,11 +97,16 @@ a pixel. `Fit to results` zooms out on demand, `Copenhagen` returns.
 
 The filters that matter:
 
-* **Nights.** A night is named by the day you arrive, because a booking runs
-  12:00 to 11:00 the next day. **fri–sat and sat–sun are on by default**; the
-  other five are a checkbox each. The calendar runs **Monday to Sunday**, the
-  Danish/ISO week, and its columns are arrival days — the `Fri` column is the
-  fri–sat night.
+* **Nights** and **Dates.** A night is named by the day you arrive, because a
+  booking runs 12:00 to 11:00 the next day. **fri–sat and sat–sun are on by
+  default**; the other five are a checkbox each. **Both apply to the list and
+  map only — the calendar always shows the full horizon**, Monday to Sunday
+  (the Danish/ISO week), with a leading ISO week number. Its columns are
+  arrival days — the `Fri` column is the fri–sat night. This is deliberate:
+  narrowing the calendar to the same nights/dates would make clicking a cell
+  it had just dimmed away show an empty day-detail for no obvious reason. Every
+  other filter — availability, certainty, facility type, proximity — still
+  applies to the calendar, exactly as it does to the list and map.
 * **Availability.** Tri-state, because most places have no calendar at all:
   *bookable* (58, real dates), *free / first-come* (244, no booking needed, so
   free every night) and *booked elsewhere* (36, run by a municipality or private

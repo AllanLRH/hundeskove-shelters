@@ -58,7 +58,8 @@ export function renderPanel(
 
   const nights = group(
     "Nights",
-    "A night is named by the day you arrive. Weekends are on by default.",
+    "A night is named by the day you arrive. Weekends are on by default. " +
+      "Applies to the list and map — the calendar always shows every night.",
   );
   const nightGrid = document.createElement("div");
   nightGrid.className = "night-grid";
@@ -87,7 +88,7 @@ export function renderPanel(
   );
   nights.append(nightGrid, nightButtons);
 
-  const dates = group("Dates");
+  const dates = group("Dates", "Applies to the list and map, not the calendar.");
   dates.append(
     dateInput("From", filters.from, data, (value) => {
       filters.from = value;

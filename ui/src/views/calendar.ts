@@ -55,7 +55,8 @@ export function renderCalendar(
   legend.textContent =
     "The week runs Monday to Sunday. Each cell is the night you arrive on that day — " +
     "Fri is the fri–sat night. Top number: bookable places free. Bottom: free/first-come matching. " +
-    "Click a night to see which places they are.";
+    "Click a night to see which places they are. Shows the whole horizon regardless of the " +
+    "Nights and Dates filters, which apply to the list and map only.";
   root.append(legend);
 
   if (filters.day) {
@@ -135,9 +136,10 @@ export function renderCalendar(
         const entry = counts.get(date)!;
         const cell = document.createElement("button");
         cell.className = "cal-cell";
-        // Dimmed rather than hidden, so the weekend pattern stays readable.
-        if (!filters.nights.has(night)) cell.classList.add("dimmed");
-        if (date < filters.from || date > filters.to) cell.classList.add("dimmed");
+        // The Nights and Dates filters deliberately do not reach the calendar
+        // — it always shows the whole horizon, so a night dimmed there for
+        // being outside those filters would have made a clickable cell whose
+        // own day-detail then had nothing to show.
         if (filters.day === date) cell.classList.add("picked");
         if (entry.bookable === 0 && entry.open === 0) cell.classList.add("none");
 

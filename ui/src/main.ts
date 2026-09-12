@@ -2,7 +2,14 @@ import "leaflet/dist/leaflet.css";
 import "./styles.css";
 
 import { loadDataset } from "./data";
-import { applyFilters, fromHash, toHash, type Filters, type Hit } from "./filters";
+import {
+  applyCalendarFilters,
+  applyFilters,
+  fromHash,
+  toHash,
+  type Filters,
+  type Hit,
+} from "./filters";
 import { renderPanel } from "./panel";
 import { initTheme } from "./theme";
 import { facilityCard } from "./views/card";
@@ -83,7 +90,12 @@ async function start(): Promise<void> {
   }
 
   function render(): void {
+    // List and map respect every filter, including Nights and Dates. The
+    // calendar deliberately does not: its whole point is to show the full
+    // horizon so you can see the pattern across it, so it reads from
+    // applyCalendarFilters instead — same result, minus those two.
     const hits = applyFilters(data, filters);
+    const calendarHits = applyCalendarFilters(data, filters);
 
     status.textContent =
       `${hits.length} of ${data.facilities.length} places match` +
@@ -100,7 +112,7 @@ async function start(): Promise<void> {
       el("view-calendar"),
       data,
       filters,
-      hits,
+      calendarHits,
       (day) => {
         filters.day = day;
         history.replaceState(null, "", `#${toHash(filters, data)}`);

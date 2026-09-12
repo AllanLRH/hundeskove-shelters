@@ -445,16 +445,6 @@ main {
 .cal-cell .cal-day { font-size: .68rem; color: var(--muted); }
 .cal-cell .cal-bookable { font-size: 1rem; font-weight: 700; color: var(--ok); }
 .cal-cell .cal-open { font-size: .68rem; color: var(--muted); }
-/* Filtered-out nights read as "not selected", not "unreadable": opacity alone
-   dropped body text to ~1.5:1 against the page background, well under the
-   4.5:1 WCAG floor, on the majority of cells in the default (weekend-only)
-   view. The cell is still clickable — picking a dimmed night is how you widen
-   the filter to it — so it needs to stay legible, just visually secondary. */
-.cal-cell.dimmed { background: var(--surface-2); }
-.cal-cell.dimmed .cal-day,
-.cal-cell.dimmed .cal-bookable,
-.cal-cell.dimmed .cal-open { color: var(--muted); }
-.cal-cell.dimmed .cal-bookable { font-weight: 500; }
 .cal-cell.none .cal-bookable { color: var(--muted); font-weight: 400; }
 .cal-cell.picked {
   outline: 2px solid var(--accent);
