@@ -193,6 +193,17 @@ export function mapServices(facility: Facility): { label: string; href: string }
       href: `https://www.bing.com/maps?sp=point.${lat}_${lon}_${pinLabel}&lvl=${AERIAL_ZOOM}&style=h`,
     },
     {
+      // t=coordinates asks Krak to search for and pin this exact coordinate;
+      // l=hybrid is its aerial-photo-plus-labels view ("Luftfoto" hybrid).
+      // krak.dk sits behind a Cloudflare bot challenge, so this could not be
+      // curl-verified like the others — it mirrors a URL confirmed working in
+      // a real browser (?t=coordinates&c=lat,lon&l=hybrid&z=…&fit=true), minus
+      // the trailing som= token, which looks like a session/analytics id
+      // rather than anything location-related.
+      label: "Krak",
+      href: `https://www.krak.dk/kort/s%C3%B8g/${lat}%2C+${lon}?t=coordinates&c=${lat},${lon}&l=hybrid&z=${AERIAL_ZOOM}&fit=true`,
+    },
+    {
       // No aerial imagery, but it is the source of this data; mlat/mlon pins it.
       label: "OSM",
       href: `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=17/${lat}/${lon}`,

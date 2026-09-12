@@ -181,13 +181,26 @@ const aerialParam: Record<string, string> = {
   Google: "data=!3m1!1e3",
   Apple: "t=k",
   Bing: "style=h",
+  Krak: "l=hybrid",
 };
 check(
-  "Google, Apple and Bing are asked for satellite/aerial",
+  "Google, Apple, Bing and Krak are asked for satellite/aerial",
   services
     .filter((s) => s.label in aerialParam)
     .every((s) => s.href.includes(aerialParam[s.label]!)),
   services.map((s) => s.label).join(", "),
+);
+
+// Krak could not be curl-verified (Cloudflare bot challenge on krak.dk), so
+// its URL is copied from a real working example rather than reverse-engineered
+// from documentation. Assert the shape matches what was actually observed,
+// and that the session/analytics token from that example (som=...) did not
+// leak into a coordinate-based link that has nothing to do with that session.
+const krak = services.find((s) => s.label === "Krak")!.href;
+check(
+  "Krak's URL matches the confirmed-working shape",
+  krak.startsWith("https://www.krak.dk/kort/s%C3%B8g/") && krak.includes("&z=") && !krak.includes("&som="),
+  krak,
 );
 
 // The regression that prompted this: centring the viewport is not a waypoint.
@@ -195,6 +208,7 @@ const pinMarker: Record<string, string> = {
   Google: "/maps/place/",
   Apple: "q=",
   Bing: "sp=point.",
+  Krak: "t=coordinates",
   OSM: "mlat=",
 };
 check(
