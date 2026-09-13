@@ -146,6 +146,14 @@ copied from a real working example rather than curl-verified, since krak.dk
 sits behind a Cloudflare bot challenge. OpenStreetMap is there too, greyed,
 since it has no imagery but is the source of this data and drops a pin.
 
+A separate "Source layers" link opens **udinaturen.dk's own map**, with the
+Hundeskov layer and the facility's own category layer both switched on —
+reverse-engineered from its homepage's "Vis på kort" form, confirmed by
+diffing the live `/kort` page's response with and without the query params. It
+has no way to centre on one facility (`center`, `zoom`, `lat`/`lon`, `x`/`y`
+and `kommunekoder` were all tried against the live page and changed nothing),
+so unlike the five above it opens the national map rather than a pin.
+
 Filter state lives in the URL hash, so a particular view can be bookmarked.
 
 `just dev` runs the Vite dev server with hot reload and reads `output/`

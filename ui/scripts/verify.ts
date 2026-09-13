@@ -19,7 +19,7 @@ import {
 } from "../src/filters";
 import type { Availability, Confidence, RawAvailability } from "../src/types";
 import { STORAGE_KEY } from "../src/theme";
-import { mapServices } from "../src/views/card";
+import { mapServices, udinaturenMapUrl } from "../src/views/card";
 
 // npm runs this with cwd = ui/, and the bundle lives elsewhere, so resolve
 // from cwd rather than from the module location.
@@ -272,6 +272,32 @@ check("a blank name still pins with a fallback label", blank.includes("q=Shelter
 check(
   "every map link is https",
   services.every((s) => s.href.startsWith("https://")),
+);
+
+// --- udinaturen's own map: no coordinates, but the right layers on ---------
+// Reverse-engineered by diffing the live /kort page's response with and
+// without query params (see card.ts) — the shape asserted here is what that
+// diff showed, not a guess.
+const udinaturenUrl = udinaturenMapUrl(sample);
+check(
+  "udinaturen's link requests every region",
+  udinaturenUrl.includes("region=81,82,83,84,85"),
+  udinaturenUrl,
+);
+check(
+  "udinaturen's link turns on Hundeskov plus this facility's own category",
+  udinaturenUrl.includes(`categories=1133,${sample.umb_id}`),
+  udinaturenUrl,
+);
+check(
+  "the category matches whichever facility is asked for, across all four types",
+  [1115, 1111, 1112, 1106].every((umb_id) =>
+    udinaturenMapUrl({ ...sample, umb_id }).includes(`categories=1133,${umb_id}`),
+  ),
+);
+check(
+  "udinaturen's link is https and points at udinaturen.dk",
+  udinaturenUrl.startsWith("https://udinaturen.dk/"),
 );
 
 // --- theme -----------------------------------------------------------------

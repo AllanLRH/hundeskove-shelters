@@ -211,6 +211,32 @@ export function mapServices(facility: Facility): { label: string; href: string }
   ];
 }
 
+// All five regions, so the layer isn't missing forests just because this one
+// facility happens to sit in a particular region — see udinaturenMapUrl.
+const UDINATUREN_REGIONS = "81,82,83,84,85";
+
+/**
+ * udinaturen.dk's own interactive map, with the Hundeskov layer and this
+ * facility's own category layer both switched on — the same view the site's
+ * "Vis på kort" quickstart produces.
+ *
+ * Reverse-engineered from its homepage form, whose onsubmit handler is
+ * `location.href='/kort/?region='+region+activity` (`activity` already reads
+ * `&categories=…`). The /kort page runs an inline script on load that clicks
+ * the matching checkboxes — `$Id('region-84').click()`, then
+ * `$Id('f_1133').click()`, `$Id('f_1115').click()`, … — confirmed by diffing
+ * the rendered page with and without these query params: identical byte-for-
+ * byte except for that one script block.
+ *
+ * There is no centring parameter of any kind — `center`, `zoom`, `lat`/`lon`,
+ * `x`/`y` and `kommunekoder` were all tried against the live page and every
+ * one left the response unchanged — so this opens the *national* map with the
+ * right layers on, not a pin at this facility.
+ */
+export function udinaturenMapUrl(facility: Facility): string {
+  return `https://udinaturen.dk/kort/?region=${UDINATUREN_REGIONS}&categories=1133,${facility.umb_id}`;
+}
+
 function linksBlock(facility: Facility): HTMLElement {
   const wrapper = document.createElement("div");
   wrapper.className = "card-links";
@@ -242,10 +268,37 @@ function linksBlock(facility: Facility): HTMLElement {
     link.target = "_blank";
     link.rel = "noreferrer";
     link.textContent = label;
-    if (label === "OSM") link.title = "OpenStreetMap — map data, no imagery";
+    if (label === "OSM") {
+      link.title = "OpenStreetMap — map data, no imagery";
+      // A class, not the presence of a title attribute: the udinaturen link
+      // below also has one (for its own, different reason), and matching on
+      // any titled link in a .map-links row previously meant either one could
+      // silently pick up styling meant for the other.
+      link.classList.add("map-link-muted");
+    }
     aerial.append(link);
   }
 
-  wrapper.append(primary, aerial);
+  // A separate row, not folded into "Aerial view:": unlike those five, this
+  // link carries no coordinates at all and does not pin the facility — it
+  // opens udinaturen's own national map with the Hundeskov and this
+  // facility's category layers switched on, which is a different thing to
+  // promise than "look at this exact spot".
+  const source = document.createElement("p");
+  source.className = "map-links";
+  const sourceCaption = document.createElement("span");
+  sourceCaption.className = "map-links-label";
+  sourceCaption.textContent = "Source layers:";
+  const sourceLink = document.createElement("a");
+  sourceLink.href = udinaturenMapUrl(facility);
+  sourceLink.target = "_blank";
+  sourceLink.rel = "noreferrer";
+  sourceLink.textContent = `udinaturen.dk (Hundeskov + ${facility.facility_type})`;
+  sourceLink.title =
+    "Opens udinaturen's national map with these two layers switched on — " +
+    "it has no way to centre on this one facility.";
+  source.append(sourceCaption, sourceLink);
+
+  wrapper.append(primary, aerial, source);
   return wrapper;
 }

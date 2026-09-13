@@ -390,8 +390,11 @@ main {
   font-size: .82rem;
 }
 .map-links-label { color: var(--muted); font-size: .775rem; }
-/* OSM is the odd one out: map data, not imagery. */
-.map-links a[title] { color: var(--muted); }
+/* OSM is the odd one out: map data, not imagery. A dedicated class rather than
+   `a[title]` — the udinaturen source-layers link below also carries a title,
+   for its own unrelated reason (it doesn't pin the facility), and matching on
+   any titled link would have picked that up too. */
+.map-link-muted { color: var(--muted); }
 
 .empty { color: var(--muted); }
 
