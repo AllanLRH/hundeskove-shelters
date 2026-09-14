@@ -47,6 +47,7 @@ CSV_COLUMNS = [
     "dog_forest_has_boundary",
     "geofence_source",
     "commune_code",
+    "region",
     "org",
     "bookable",
     "booking_status",
@@ -129,6 +130,11 @@ def discover(
                 "dog_forest_has_boundary": geo.has_boundary(match.dog_forest),
                 "geofence_source": match.dog_forest.get("geofence_source", "fkg"),
                 "commune_code": facility["communeCode"],
+                # udinaturen's own map can only be deep-linked at region
+                # granularity, so the UI needs to know which region a facility
+                # is in to avoid opening the whole country. Int, to match the
+                # --regions CLI flag rather than the API's stringly-typed field.
+                "region": int(facility["region"]),
                 "org": facility["ansvar_Org"],
                 "bookable": bool(facility["booking"]),
                 "place_id": place_id,

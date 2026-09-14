@@ -19,7 +19,11 @@ import {
 } from "../src/filters";
 import type { Availability, Confidence, RawAvailability } from "../src/types";
 import { STORAGE_KEY } from "../src/theme";
-import { mapServices, udinaturenMapUrl } from "../src/views/card";
+import {
+  mapServices,
+  udinaturenFacilityUrl,
+  udinaturenMapUrl,
+} from "../src/views/card";
 
 // npm runs this with cwd = ui/, and the bundle lives elsewhere, so resolve
 // from cwd rather than from the module location.
@@ -280,9 +284,14 @@ check(
 // diff showed, not a guess.
 const udinaturenUrl = udinaturenMapUrl(sample);
 check(
-  "udinaturen's link requests every region",
-  udinaturenUrl.includes("region=81,82,83,84,85"),
+  "udinaturen's map link aims at the facility's own region, not all of Denmark",
+  udinaturenUrl.includes(`region=${sample.region}`) &&
+    !udinaturenUrl.includes("region=81,82,83,84,85"),
   udinaturenUrl,
+);
+check(
+  "every facility carries a region in 81-85 to aim it with",
+  data.facilities.every((f) => Number.isInteger(f.region) && f.region >= 81 && f.region <= 85),
 );
 check(
   "udinaturen's link turns on Hundeskov plus this facility's own category",
@@ -298,6 +307,16 @@ check(
 check(
   "udinaturen's link is https and points at udinaturen.dk",
   udinaturenUrl.startsWith("https://udinaturen.dk/"),
+);
+
+// The zoomed-in counterpart: udinaturen's map cannot be centred on a point,
+// so the facility's own page carries that half of the job. The slug segment
+// is decorative -- /facilitet/?id=<guid> serves the right page by itself.
+const facilityUrl = udinaturenFacilityUrl(sample);
+check(
+  "the facility-page link is built from the GUID alone, with no slug to get wrong",
+  facilityUrl === `https://udinaturen.dk/facilitet/?id=${sample.shelter_id}`,
+  facilityUrl,
 );
 
 // --- theme -----------------------------------------------------------------

@@ -146,13 +146,24 @@ copied from a real working example rather than curl-verified, since krak.dk
 sits behind a Cloudflare bot challenge. OpenStreetMap is there too, greyed,
 since it has no imagery but is the source of this data and drops a pin.
 
-A separate "Source layers" link opens **udinaturen.dk's own map**, with the
-Hundeskov layer and the facility's own category layer both switched on —
-reverse-engineered from its homepage's "Vis på kort" form, confirmed by
-diffing the live `/kort` page's response with and without the query params. It
-has no way to centre on one facility (`center`, `zoom`, `lat`/`lon`, `x`/`y`
-and `kommunekoder` were all tried against the live page and changed nothing),
-so unlike the five above it opens the national map rather than a pin.
+An **"On udinaturen"** row carries two links, because udinaturen splits the two
+things you want across two pages and neither page does both:
+
+* **"Hundeskov + <type> layers"** opens `/kort/` with both layers switched on —
+  reverse-engineered from the homepage's "Vis på kort" form, confirmed by
+  diffing the live page's response with and without the query params. **This
+  map cannot be centred on a point.** Its view is only ever driven by
+  `zoomToRegins()`, which fits to the checked regions; OpenLayers' own `Link`
+  control (which would sync `x`/`y`/`z` to the URL) is in the bundle but never
+  instantiated — loading `/kort/` with `x`/`y`/`z` leaves the view untouched,
+  and panning never writes them back. `center`, `zoom`, `lat`/`lon` and
+  `kommunekoder` do nothing either, and there is no kommune-level filter. So it
+  is aimed at the facility's **own region** rather than all five: measured live,
+  zoom 9.58 instead of 8.37.
+* **"this spot"** opens `/facilitet/?id=<guid>`, udinaturen's page for that
+  exact facility, whose embedded map *is* centred on it (zoom ~18.5). The slug
+  segment is decorative — the GUID alone serves the right page. The trade-off
+  is that this map shows no Hundeskov layer.
 
 Filter state lives in the URL hash, so a particular view can be bookmarked.
 

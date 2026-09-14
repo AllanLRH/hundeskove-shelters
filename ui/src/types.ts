@@ -15,6 +15,8 @@ export interface RawFacility {
   dog_forest_has_boundary: boolean;
   geofence_source: "fkg" | "osm";
   commune_code: number;
+  /** 81-85. udinaturen's map can only be deep-linked this coarsely. */
+  region: number;
   org: string;
   bookable: boolean;
   place_id: number | null;

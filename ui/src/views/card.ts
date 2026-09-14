@@ -211,10 +211,6 @@ export function mapServices(facility: Facility): { label: string; href: string }
   ];
 }
 
-// All five regions, so the layer isn't missing forests just because this one
-// facility happens to sit in a particular region — see udinaturenMapUrl.
-const UDINATUREN_REGIONS = "81,82,83,84,85";
-
 /**
  * udinaturen.dk's own interactive map, with the Hundeskov layer and this
  * facility's own category layer both switched on — the same view the site's
@@ -225,16 +221,38 @@ const UDINATUREN_REGIONS = "81,82,83,84,85";
  * `&categories=…`). The /kort page runs an inline script on load that clicks
  * the matching checkboxes — `$Id('region-84').click()`, then
  * `$Id('f_1133').click()`, `$Id('f_1115').click()`, … — confirmed by diffing
- * the rendered page with and without these query params: identical byte-for-
- * byte except for that one script block.
+ * the rendered page with and without these query params.
  *
- * There is no centring parameter of any kind — `center`, `zoom`, `lat`/`lon`,
- * `x`/`y` and `kommunekoder` were all tried against the live page and every
- * one left the response unchanged — so this opens the *national* map with the
- * right layers on, not a pin at this facility.
+ * **This map cannot be centred on a point.** Its OpenLayers view is only ever
+ * driven by `zoomToRegins()`, which fits to the checked regions' ZoomPoints.
+ * OpenLayers' own `Link` control (which would sync `x`/`y`/`z` to the URL) is
+ * present in the bundle but never instantiated: loading `/kort/` with
+ * `x`/`y`/`z` set leaves `map.getView().getCenter()` untouched, and panning
+ * never writes those params back. `center`, `zoom`, `lat`/`lon` and
+ * `kommunekoder` do nothing either, and the page has no kommune-level filter
+ * to narrow to.
+ *
+ * So the tightest this can be aimed is the facility's *own* region rather than
+ * all five — measured in the live page, that is zoom 9.58 instead of 8.37.
+ * For an actually-local view, see `udinaturenFacilityUrl`.
  */
 export function udinaturenMapUrl(facility: Facility): string {
-  return `https://udinaturen.dk/kort/?region=${UDINATUREN_REGIONS}&categories=1133,${facility.umb_id}`;
+  return `https://udinaturen.dk/kort/?region=${facility.region}&categories=1133,${facility.umb_id}`;
+}
+
+/**
+ * udinaturen's page for this exact facility, whose embedded map *is* centred
+ * on it at roughly a 20 m scale.
+ *
+ * The slug segment is decorative — `/facilitet/?id=<guid>` serves the correct
+ * page on its own (verified against the live site), so this needs nothing but
+ * the GUID we already carry. The trade-off against `udinaturenMapUrl` is that
+ * this map shows only the facility and its immediate neighbours, with no
+ * Hundeskov layer — the two capabilities live on different pages and neither
+ * page offers both.
+ */
+export function udinaturenFacilityUrl(facility: Facility): string {
+  return `https://udinaturen.dk/facilitet/?id=${facility.shelter_id}`;
 }
 
 function linksBlock(facility: Facility): HTMLElement {
@@ -279,25 +297,37 @@ function linksBlock(facility: Facility): HTMLElement {
     aerial.append(link);
   }
 
-  // A separate row, not folded into "Aerial view:": unlike those five, this
-  // link carries no coordinates at all and does not pin the facility — it
-  // opens udinaturen's own national map with the Hundeskov and this
-  // facility's category layers switched on, which is a different thing to
-  // promise than "look at this exact spot".
+  // A separate row from "Aerial view:", because neither of these pins the
+  // facility the way those five do. udinaturen splits the two things you want
+  // across two pages: one can show the Hundeskov layer but only aims at a
+  // whole region, the other is centred on the facility but has no such layer.
+  // Offering both, labelled for what each actually does, beats silently
+  // picking one and leaving the other unreachable.
   const source = document.createElement("p");
   source.className = "map-links";
   const sourceCaption = document.createElement("span");
   sourceCaption.className = "map-links-label";
-  sourceCaption.textContent = "Source layers:";
-  const sourceLink = document.createElement("a");
-  sourceLink.href = udinaturenMapUrl(facility);
-  sourceLink.target = "_blank";
-  sourceLink.rel = "noreferrer";
-  sourceLink.textContent = `udinaturen.dk (Hundeskov + ${facility.facility_type})`;
-  sourceLink.title =
-    "Opens udinaturen's national map with these two layers switched on — " +
-    "it has no way to centre on this one facility.";
-  source.append(sourceCaption, sourceLink);
+  sourceCaption.textContent = "On udinaturen:";
+
+  const layersLink = document.createElement("a");
+  layersLink.href = udinaturenMapUrl(facility);
+  layersLink.target = "_blank";
+  layersLink.rel = "noreferrer";
+  layersLink.textContent = `Hundeskov + ${facility.facility_type} layers`;
+  layersLink.title =
+    "udinaturen's map with both layers on. It cannot be centred on a point, " +
+    "so it opens fitted to this facility's region.";
+
+  const spotLink = document.createElement("a");
+  spotLink.href = udinaturenFacilityUrl(facility);
+  spotLink.target = "_blank";
+  spotLink.rel = "noreferrer";
+  spotLink.textContent = "this spot";
+  spotLink.title =
+    "udinaturen's page for this facility — its map is zoomed right in, " +
+    "but shows no Hundeskov layer.";
+
+  source.append(sourceCaption, layersLink, spotLink);
 
   wrapper.append(primary, aerial, source);
   return wrapper;
