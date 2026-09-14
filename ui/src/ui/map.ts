@@ -1,6 +1,7 @@
 import L from "leaflet";
-import type { Hit } from "../filters";
-import { type Confidence, type Dataset } from "../types";
+import type { Match } from "../domain/search";
+import { confidenceOf, type Confidence } from "../domain/facility";
+import type { Dataset } from "../domain/dataset";
 
 // Markers sit on light map tiles in both themes (dark mode only dims them),
 // so these stay the light-palette semantic hues from styles.css.
@@ -104,37 +105,37 @@ export class MapView {
     }).addTo(this.forests);
   }
 
-  render(hits: Hit[], selectedId: string | null): void {
+  render(matches: readonly Match[], selectedId: string | null): void {
     this.ensureMap();
     this.markers.clearLayers();
     this.byId.clear();
 
-    for (const { facility } of hits) {
-      const marker = L.circleMarker([facility.lat, facility.lon], {
-        radius: facility.shelter_id === selectedId ? 11 : 7,
-        color: CONFIDENCE_COLOUR[facility.confidence],
-        weight: facility.shelter_id === selectedId ? 3 : 2,
-        fillColor: CONFIDENCE_COLOUR[facility.confidence],
+    for (const { facility } of matches) {
+      const marker = L.circleMarker([facility.position.lat, facility.position.lon], {
+        radius: facility.id === selectedId ? 11 : 7,
+        color: CONFIDENCE_COLOUR[confidenceOf(facility.proximity)],
+        weight: facility.id === selectedId ? 3 : 2,
+        fillColor: CONFIDENCE_COLOUR[confidenceOf(facility.proximity)],
         // Hollow for anything without a real calendar, so availability is
         // visible at a glance and not only after clicking.
-        fillOpacity: facility.availability === "calendar" ? 0.85 : 0.25,
+        fillOpacity: facility.availability.kind === "bookable" ? 0.85 : 0.25,
       });
       // A tooltip names the marker on hover; the full detail — which nights and
       // where to book — goes in the panel below, where it has room to breathe
       // and matches what the list and calendar show.
       marker.bindTooltip(facility.name || "(unnamed)");
-      marker.on("click", () => this.onSelect(facility.shelter_id));
+      marker.on("click", () => this.onSelect(facility.id));
       marker.addTo(this.markers);
-      this.byId.set(facility.shelter_id, marker);
+      this.byId.set(facility.id, marker);
     }
 
     // Deliberately does not move the map. Re-fitting on every filter change
     // yanks the view away mid-browse, and fitting all results zooms out past
     // the point where the dog-forest outlines are legible.
     this.lastBounds =
-      hits.length > 0
+      matches.length > 0
         ? L.latLngBounds(
-            hits.map((hit) => [hit.facility.lat, hit.facility.lon] as [number, number]),
+            matches.map((m) => [m.facility.position.lat, m.facility.position.lon] as [number, number]),
           )
         : null;
   }

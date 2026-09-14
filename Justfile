@@ -50,10 +50,13 @@ test *ARGS:
     {{npm}} --prefix ui run test
 
 # Type-check, run both suites, and re-check the generated output.
+# The two parity steps run the real pipeline logic over the data actually on
+# disk; the unit suites use fixtures and stay deterministic.
 check:
     {{npm}} --prefix ui run typecheck
     just test
     uv run python scripts/check_outputs.py
+    {{npm}} --prefix ui run parity
 
 # Drop generated output and the UI build. Keeps cache/, which is slow to rebuild.
 clean:

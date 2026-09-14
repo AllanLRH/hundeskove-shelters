@@ -1,16 +1,18 @@
-import type { Hit } from "../filters";
+import type { Match } from "../domain/search";
+import type { Night } from "../domain/night";
+import type { TravelTimes } from "../domain/travel";
 import { facilityCard } from "./card";
 
 export function renderList(
   root: HTMLElement,
-  hits: Hit[],
+  matches: readonly Match[],
   selectedId: string | null,
   onSelect: (id: string) => void,
-  highlightDate: string | null = null,
-  durations?: Map<string, number>,
+  highlightNight: Night | null,
+  travel: TravelTimes,
 ): void {
   root.replaceChildren();
-  if (hits.length === 0) {
+  if (matches.length === 0) {
     const empty = document.createElement("p");
     empty.className = "empty";
     empty.textContent =
@@ -19,13 +21,13 @@ export function renderList(
     return;
   }
 
-  for (const { facility, nights } of hits) {
+  for (const { facility, nights } of matches) {
     root.append(
       facilityCard(facility, nights, {
-        selected: facility.shelter_id === selectedId,
+        selected: facility.id === selectedId,
         onSelect,
-        highlightDate,
-        driveSeconds: durations?.get(facility.shelter_id) ?? null,
+        highlightNight,
+        driveSeconds: travel.get(facility.id) ?? null,
       }),
     );
   }

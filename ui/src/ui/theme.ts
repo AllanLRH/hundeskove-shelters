@@ -10,10 +10,12 @@
  * handles.
  */
 
+import { localStore, THEME_KEY } from "../io/storage";
+
 export type Theme = "system" | "light" | "dark";
 
 /** Must stay in step with the pre-paint script in index.html. */
-export const STORAGE_KEY = "hundeskove:theme";
+export { THEME_KEY as STORAGE_KEY } from "../io/storage";
 const ORDER: Theme[] = ["system", "light", "dark"];
 
 const LABEL: Record<Theme, string> = {
@@ -30,7 +32,7 @@ const ICON: Record<Theme, string> = {
 
 function stored(): Theme {
   try {
-    const value = localStorage.getItem(STORAGE_KEY);
+    const value = localStore.get(THEME_KEY);
     if (value === "light" || value === "dark" || value === "system") return value;
   } catch {
     // Private browsing can throw on access; falling back to system is fine.
@@ -39,12 +41,8 @@ function stored(): Theme {
 }
 
 function persist(theme: Theme): void {
-  try {
-    if (theme === "system") localStorage.removeItem(STORAGE_KEY);
-    else localStorage.setItem(STORAGE_KEY, theme);
-  } catch {
-    // Not being able to remember the choice is not worth breaking the page for.
-  }
+  if (theme === "system") localStore.remove(THEME_KEY);
+  else localStore.set(THEME_KEY, theme);
 }
 
 function apply(theme: Theme): void {

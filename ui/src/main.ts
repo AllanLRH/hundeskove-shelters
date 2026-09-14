@@ -1,31 +1,43 @@
+/**
+ * Wiring only: build the collaborators, hold the state, paint on change.
+ *
+ * Every decision lives in `domain/` or `app/`; this file's job is to connect
+ * them to the browser. That is also why the interesting behaviour can be tested
+ * without one.
+ */
+
 import "leaflet/dist/leaflet.css";
 import "./styles.css";
 
-import { loadDataset } from "./data";
+import { fromHash, toHash } from "./domain/shareLink";
+import type { Filters } from "./domain/filters";
+import type { Night } from "./domain/night";
+import { loadDataset } from "./io/load";
+import { readDriveCache, writeDriveCache } from "./io/driveCache";
+import { NominatimGeocoder } from "./io/geocoding";
+import { OsrmRouter } from "./io/routing";
+import { ADDRESS_KEY, localStore } from "./io/storage";
+import { StaticDatasetSource, type DatasetSource } from "./io/datasetSource";
 import {
-  applyCalendarFilters,
-  applyFilters,
-  fromHash,
-  toHash,
-  type Filters,
-  type Hit,
-} from "./filters";
-import { renderPanel } from "./panel";
-import { initTheme } from "./theme";
-import {
-  drivingDurations,
-  emptyTravel,
-  geocode,
-  rememberAddress,
-  type TravelState,
-} from "./travel";
-import { facilityCard } from "./views/card";
-import { renderCalendar } from "./views/calendar";
-import { renderList } from "./views/list";
-import { MapView } from "./views/map";
-import type { Dataset } from "./types";
-
-type ViewName = "list" | "calendar" | "map";
+  adoptDataset,
+  clearTravel,
+  deriveViewModel,
+  initialState,
+  pickNight,
+  selectFacility,
+  showView,
+  updateOffered,
+  withFilters,
+  type AppState,
+  type ViewName,
+} from "./app/state";
+import { lookUpTravel } from "./app/lookUpTravel";
+import { renderCalendar } from "./ui/calendar";
+import { facilityCard } from "./ui/card";
+import { renderList } from "./ui/list";
+import { MapView } from "./ui/map";
+import { renderPanel } from "./ui/panel";
+import { initTheme } from "./ui/theme";
 
 const el = <T extends HTMLElement>(id: string): T => {
   const node = document.getElementById(id);
@@ -33,93 +45,132 @@ const el = <T extends HTMLElement>(id: string): T => {
   return node as T;
 };
 
+const VIEWS: ViewName[] = ["list", "calendar", "map"];
+
 async function start(): Promise<void> {
   initTheme(el<HTMLButtonElement>("theme-toggle"));
 
   const status = el("status");
-  let data: Dataset;
+  let source: DatasetSource;
   try {
-    data = await loadDataset();
+    source = new StaticDatasetSource(await loadDataset());
   } catch (error) {
     status.textContent = error instanceof Error ? error.message : String(error);
     status.classList.add("error");
     return;
   }
 
-  let filters: Filters = fromHash(location.hash, data);
-  let view: ViewName = "list";
-  let selected: string | null = null;
-  let travel: TravelState = emptyTravel();
+  let dataset = source.current().dataset;
+  let state: AppState = initialState(
+    dataset,
+    fromHash(location.hash, dataset),
+    localStore.get(ADDRESS_KEY) ?? "",
+  );
 
-  /**
-   * Geocode an address, then fetch driving times to every facility.
-   *
-   * Guards against a second submit while one is in flight: the public OSRM and
-   * Nominatim instances are donated capacity, and a double-click should not
-   * double the load.
-   */
-  async function lookUpAddress(query: string): Promise<void> {
-    const trimmed = query.trim();
-    if (!trimmed || travel.status === "working") return;
-
-    travel = { ...travel, query: trimmed, status: "working", error: null, progress: "Looking up address…" };
-    rememberAddress(trimmed);
-    render();
-
-    try {
-      const origin = await geocode(trimmed);
-      travel = { ...travel, origin, progress: "Calculating driving times…" };
-      render();
-
-      const durations = await drivingDurations(origin, data.facilities, (done, total) => {
-        if (total > 1) {
-          travel = { ...travel, progress: `Calculating driving times… ${done}/${total}` };
-          render();
-        }
-      });
-      travel = { ...travel, durations, status: "ready", progress: null };
-    } catch (error) {
-      travel = {
-        ...travel,
-        status: "error",
-        error: error instanceof Error ? error.message : String(error),
-        progress: null,
-      };
-    }
-    render();
-  }
-
-  function clearAddress(): void {
-    rememberAddress("");
-    travel = emptyTravel();
-    travel.query = "";
-    // A drive-time limit with no address behind it would silently hide
-    // everything, so drop it along with the address.
-    filters.maxDriveMinutes = null;
-    filters.sortBy = "confidence";
-    history.replaceState(null, "", `#${toHash(filters, data)}`);
-    render();
-  }
-
-  const mapView = new MapView(el("map-canvas"), (id) => {
-    selected = id;
+  // Nothing offers a newer dataset yet, but the seam is live: when a polling
+  // source replaces the static one, the banner and the adopt path already work.
+  source.subscribe(() => {
+    state = updateOffered(state);
     render();
   });
-  mapView.drawForests(data);
 
-  function select(id: string): void {
-    selected = id;
+  const geocoder = new NominatimGeocoder();
+  const router = new OsrmRouter();
+  const mapView = new MapView(el("map-canvas"), (id) => set(selectFacility(state, id)));
+  mapView.drawForests(dataset);
+
+  function set(next: AppState): void {
+    state = next;
     render();
-    if (view === "map") mapView.focus(id);
   }
 
-  /** The detail for whichever marker is selected, shown beneath the map. */
-  function renderMapDetail(hits: Hit[]): void {
+  function syncHash(): void {
+    history.replaceState(null, "", `#${toHash(state.filters, dataset)}`);
+  }
+
+  function changeFilters(filters: Filters): void {
+    state = withFilters(state, filters);
+    syncHash();
+    render();
+  }
+
+  function choose(id: string): void {
+    set(selectFacility(state, id));
+    if (state.view === "map") mapView.focus(id);
+  }
+
+  function choosePickNight(night: Night | null): void {
+    state = pickNight(state, night);
+    syncHash();
+    render();
+  }
+
+  async function onAddress(query: string): Promise<void> {
+    state = await lookUpTravel(state, dataset, query, {
+      geocoder,
+      router,
+      readCache: (origin) => readDriveCache(origin as never),
+      writeCache: (origin, times) => writeDriveCache(origin as never, times),
+      rememberAddress: (value) =>
+        value ? localStore.set(ADDRESS_KEY, value) : localStore.remove(ADDRESS_KEY),
+    }, set);
+  }
+
+  function onClearAddress(): void {
+    localStore.remove(ADDRESS_KEY);
+    state = clearTravel(state);
+    syncHash();
+    render();
+  }
+
+  function adopt(): void {
+    dataset = source.adopt().dataset;
+    state = adoptDataset(state, dataset);
+    mapView.drawForests(dataset);
+    render();
+  }
+  // Referenced so the seam is obviously wired rather than dead; the banner that
+  // calls it arrives with the polling source.
+  void adopt;
+
+  function render(): void {
+    const vm = deriveViewModel(dataset, state);
+    status.textContent = vm.status;
+
+    renderPanel(el("panel"), dataset, state.filters, vm.travel, {
+      onChange: () => changeFilters(state.filters),
+      onAddress: (query) => void onAddress(query),
+      onClearAddress,
+    });
+
+    renderList(
+      el("view-list"), vm.matches, state.selectedId, choose,
+      state.filters.night, vm.travel.times,
+    );
+    renderCalendar(
+      el("view-calendar"), dataset, vm.tally, vm.nightDetail,
+      state.selectedId, vm.travel.times,
+      { onPickNight: choosePickNight, onSelect: choose },
+    );
+    mapView.render(vm.matches, state.selectedId);
+    renderMapDetail(vm.selected, vm.travel.times, state.filters.night);
+
+    for (const name of VIEWS) {
+      el(`view-${name}`).hidden = name !== state.view;
+      el(`tab-${name}`).classList.toggle("active", name === state.view);
+    }
+    // Leaflet cannot measure a hidden container, so re-measure once shown.
+    if (state.view === "map") mapView.refresh();
+  }
+
+  function renderMapDetail(
+    selected: ReturnType<typeof deriveViewModel>["selected"],
+    times: ReturnType<typeof deriveViewModel>["travel"]["times"],
+    highlightNight: Night | null,
+  ): void {
     const root = el("map-detail");
     root.replaceChildren();
-
-    const hit = hits.find((candidate) => candidate.facility.shelter_id === selected);
-    if (!hit) {
+    if (!selected) {
       const hint = document.createElement("p");
       hint.className = "map-hint";
       hint.textContent =
@@ -132,88 +183,25 @@ async function start(): Promise<void> {
     clear.type = "button";
     clear.className = "clear-day";
     clear.textContent = "Clear selection";
-    clear.addEventListener("click", () => {
-      selected = null;
-      render();
-    });
+    clear.addEventListener("click", () => set(selectFacility(state, null)));
     root.append(clear);
-    // Every night, not the list's truncated preview: this is the detail view.
     root.append(
-      facilityCard(hit.facility, hit.nights, {
+      facilityCard(selected.facility, selected.nights, {
         selected: true,
-        maxDates: Infinity,
-        highlightDate: filters.day,
-        driveSeconds: travel.durations.get(hit.facility.shelter_id) ?? null,
+        // Every night, not the list's preview: this is the detail view.
+        maxNights: Infinity,
+        highlightNight,
+        driveSeconds: times.get(selected.facility.id) ?? null,
       }),
     );
   }
 
-  function render(): void {
-    // List and map respect every filter, including Nights and Dates. The
-    // calendar deliberately does not: its whole point is to show the full
-    // horizon so you can see the pattern across it, so it reads from
-    // applyCalendarFilters instead — same result, minus those two.
-    const hits = applyFilters(data, filters, travel.durations);
-    const calendarHits = applyCalendarFilters(data, filters, travel.durations);
-
-    status.textContent =
-      `${hits.length} of ${data.facilities.length} places match` +
-      (filters.day ? ` on ${filters.day}` : "") +
-      ` · availability checked ${data.checkedAt.slice(0, 10)}`;
-
-    renderPanel(
-      el("panel"),
-      data,
-      filters,
-      travel,
-      () => {
-        history.replaceState(null, "", `#${toHash(filters, data)}`);
-        render();
-      },
-      (query) => void lookUpAddress(query),
-      clearAddress,
-    );
-
-    renderList(el("view-list"), hits, selected, select, filters.day, travel.durations);
-    renderCalendar(
-      el("view-calendar"),
-      data,
-      filters,
-      calendarHits,
-      (day) => {
-        filters.day = day;
-        history.replaceState(null, "", `#${toHash(filters, data)}`);
-        render();
-      },
-      select,
-      selected,
-      travel.durations,
-    );
-    mapView.render(hits, selected);
-    renderMapDetail(hits);
-
-    for (const name of ["list", "calendar", "map"] as ViewName[]) {
-      el(`view-${name}`).hidden = name !== view;
-      el(`tab-${name}`).classList.toggle("active", name === view);
-    }
-    // The map cannot measure a hidden container, so re-measure once shown.
-    if (view === "map") mapView.refresh();
+  for (const name of VIEWS) {
+    el(`tab-${name}`).addEventListener("click", () => set(showView(state, name)));
   }
-
-  for (const name of ["list", "calendar", "map"] as ViewName[]) {
-    el(`tab-${name}`).addEventListener("click", () => {
-      view = name;
-      render();
-    });
-  }
-
   el("map-home").addEventListener("click", () => mapView.home());
   el("map-fit").addEventListener("click", () => mapView.fitToResults());
-
-  window.addEventListener("hashchange", () => {
-    filters = fromHash(location.hash, data);
-    render();
-  });
+  window.addEventListener("hashchange", () => changeFilters(fromHash(location.hash, dataset)));
 
   render();
 }

@@ -4,6 +4,7 @@ These are the invariants that have actually broken before: a CRS mix-up putting
 coordinates outside Denmark, and availability being confused with bookability.
 """
 
+import collections
 import json
 import sys
 from pathlib import Path
@@ -47,6 +48,32 @@ def main() -> None:
     impossible = [r for r in rows if r["inside_polygon"] and not r["dog_forest_has_boundary"]]
     if impossible:
         fail(f"{len(impossible)} facilities marked inside a boundary-less forest")
+
+    # Live-data assertions. These belong here rather than in the unit suite:
+    # they check the dataset currently on disk, so they are expected to move
+    # when it is refreshed. Mixed in with unit tests they failed on a data
+    # refresh rather than on a regression.
+    statuses = collections.Counter(r["booking_status"] for r in rows)
+    with_calendar = statuses["naturstyrelsen"]
+    first_come = statuses["not_bookable"]
+    print(
+        f"ok  {len(rows)} facilities: {with_calendar} bookable, "
+        f"{first_come} free/first-come, {statuses['other_operator']} booked elsewhere"
+    )
+
+    # Only facilities with a real calendar may carry dates, and "no calendar"
+    # must never be confused with "never free".
+    if first_come == 0:
+        fail("no free/first-come facilities at all — suspicious, check the pipeline")
+
+    inside = sum(1 for r in rows if r["inside_polygon"])
+    print(f"ok  {inside} facilities strictly inside a dog forest")
+    if inside == 0:
+        fail("nothing is inside a dog forest — the spatial join has broken")
+
+    regions = {r["region"] for r in rows}
+    if not regions <= {81, 82, 83, 84, 85}:
+        fail(f"unexpected region ids: {sorted(regions - {81, 82, 83, 84, 85})}")
 
     print(f"ok  {len(rows)} facilities, coordinates and availability consistent")
 
