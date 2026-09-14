@@ -10,6 +10,13 @@ dependencies = [
     "pyproj>=3.6",
 ]
 
+[dependency-groups]
+dev = ["pytest>=8.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
 [project.scripts]
 hundeskove = "hundeskove.cli:main"
 

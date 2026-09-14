@@ -44,10 +44,15 @@ serve *ARGS: build
 # Cold start: fetch everything, build, serve.
 ui: data build serve
 
-# Type-check the UI, assert the filter model, and re-run the data guards.
+# Run both test suites.
+test *ARGS:
+    uv run --group dev pytest "$@"
+    {{npm}} --prefix ui run test
+
+# Type-check, run both suites, and re-check the generated output.
 check:
     {{npm}} --prefix ui run typecheck
-    {{npm}} --prefix ui run verify
+    just test
     uv run python scripts/check_outputs.py
 
 # Drop generated output and the UI build. Keeps cache/, which is slow to rebuild.

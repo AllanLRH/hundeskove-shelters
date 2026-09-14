@@ -24,8 +24,14 @@ _to_utm32 = pyproj.Transformer.from_crs(WGS84, UTM32, always_xy=True)
 
 
 @dataclass(frozen=True, slots=True)
-class Match:
-    """A facility paired with the dog forest it belongs to (or sits closest to)."""
+class Proximity:
+    """How a facility sits relative to the dog forest it matched.
+
+    Distance, containment and overlap only mean anything together — a facility
+    can be 0 m away without being inside (an area that merely touches), and an
+    area is essentially never wholly contained — so they travel as one value
+    rather than as three loose fields.
+    """
 
     facility: dict
     dog_forest: dict
@@ -43,6 +49,20 @@ def to_shapely(facility: dict) -> base.BaseGeometry:
     (MultiPoint for most facilities, MultiPolygon or MultiPoint for dog forests).
     """
     return shape({"type": facility["geometryType"], "coordinates": facility["geometry"]})
+
+
+def _has_extent(polygon: list) -> bool:
+    """Whether a polygon's outer ring describes an actual area.
+
+    Counts *distinct* corners rather than measuring area, because a ring that
+    self-intersects can have a signed area of exactly zero while still being a
+    perfectly real boundary — a bow-tie of two equal triangles cancels out.
+    Measuring area here would throw such a forest away and silently demote it
+    to a bare point, when `make_valid` repairs it fine a few lines later.
+    Rings of one repeated point, which the real data is full of, still fail.
+    """
+    ring = polygon[0] if polygon else []
+    return len({tuple(point) for point in ring}) >= 3
 
 
 def clean_geometry(facility: dict) -> base.BaseGeometry:
@@ -65,11 +85,7 @@ def clean_geometry(facility: dict) -> base.BaseGeometry:
     if facility["geometryType"] != "MultiPolygon":
         return to_shapely(facility)
 
-    kept = [
-        polygon
-        for polygon in facility["geometry"]
-        if shape({"type": "Polygon", "coordinates": polygon}).area > 0
-    ]
+    kept = [polygon for polygon in facility["geometry"] if _has_extent(polygon)]
     if not kept:
         points = [tuple(point) for polygon in facility["geometry"] for point in polygon[0]]
         logger.debug("%r has no polygon with area; using its points", facility["name"])
@@ -109,8 +125,7 @@ def has_boundary(facility: dict) -> bool:
     rather than to an edge.
     """
     return facility["geometryType"] == "MultiPolygon" and any(
-        shape({"type": "Polygon", "coordinates": polygon}).area > 0
-        for polygon in facility["geometry"]
+        _has_extent(polygon) for polygon in facility["geometry"]
     )
 
 
@@ -143,7 +158,7 @@ def representative_coords(facility: dict) -> tuple[float, float]:
 
 def match_facilities(
     facilities: list[dict], dog_forests: list[dict], max_distance_m: float
-) -> list[Match]:
+) -> list[Proximity]:
     """Keep facilities inside, or within `max_distance_m` of, a dog forest.
 
     Distance is 0.0 for a facility inside a polygon. `inside_polygon` says which
@@ -156,7 +171,7 @@ def match_facilities(
     forest_geoms = [clean_geometry(forest) for forest in dog_forests]
     tree = STRtree(forest_geoms)
 
-    matches: list[Match] = []
+    matches: list[Proximity] = []
     for facility in facilities:
         geometry = clean_geometry(facility)
         indices, distances = tree.query_nearest(
@@ -173,7 +188,7 @@ def match_facilities(
         if geometry.area > 0:
             overlap = forest_geom.intersection(geometry).area / geometry.area
         matches.append(
-            Match(
+            Proximity(
                 facility=facility,
                 dog_forest=dog_forests[index],
                 distance_m=0.0 if inside else distance,
