@@ -189,6 +189,61 @@ Filter state lives in the URL hash, so a particular view can be bookmarked.
 directly. Node is pinned by `mise.toml` and scoped to this directory; it does
 not interfere with the uv-managed Python.
 
+## How the code is laid out
+
+Both halves are arranged by *what may touch the outside world*, so the parts
+worth testing can be tested without a browser or a network.
+
+**Python** — `geo`, `booking`, `osm` and `catalogue` hold the decisions and are
+pure; `pipeline` sequences the I/O; `outputs` writes the files; `cli` is
+argparse and dispatch. `catalogue.py` is the only module that knows the output's
+field names.
+
+**TypeScript** — four layers:
+
+| layer | may touch | holds |
+| --- | --- | --- |
+| `src/domain/` | nothing | Facility, Proximity, Availability, Night, TravelTimes, filters, search, links |
+| `src/io/` | network, storage | the wire↔domain parse, geocoding, routing, the dataset source |
+| `src/app/` | nothing | AppState, pure transitions, `deriveViewModel()` |
+| `src/ui/` | the DOM | rendering, fed the view model |
+
+`src/io/wire.ts` is the **only** file that knows the output's field names —
+`shelter_id`, `dog_forest_name` and the rest are historical and deliberately
+frozen, so they stop there and the rest of the code speaks the domain.
+
+Two modelling choices do real work. `Availability` is a union —
+`{kind:"bookable", freeNights}` / `{kind:"open"}` / `{kind:"unknown"}` — so the
+subtlest rule in the project, that *no calendar is not the same as never free*,
+is enforced by the type rather than by a comment. And `Proximity` keeps
+distance, containment and overlap together, because apart they mislead: an area
+straddling a boundary is 0 m away and still not inside it.
+
+**Refreshing data.** `io/datasetSource.ts` separates `current()` from
+`pending()`: a newer snapshot notifies subscribers, but what is on screen only
+changes on an explicit `adopt()`, so data can never swap under the reader.
+`adoptDataset()` reconciles rather than assigns — filters carry over, a
+selection whose facility has gone is dropped, and travel times are pruned to
+surviving ids. Only `StaticDatasetSource` exists today; a polling one can be
+added without any view changing.
+
+## Tests
+
+```sh
+just test      # both suites
+just check     # typecheck + both suites + guards over the real output
+```
+
+**Unit tests run against fixtures** and are deterministic: 46 pytest, 91 Vitest.
+They cover the places the subtlest bugs have been — the geometry repairs,
+booking-window arithmetic, the calendar's deliberate blindness to the Nights and
+Dates filters, and the whole address → geocode → route → filter flow against
+fake ports.
+
+**Guards run against the data actually on disk** — `scripts/check_outputs.py`
+and `npm --prefix ui run parity`. They are expected to move when the data is
+refreshed, which is exactly why they are kept apart from the unit suites.
+
 ## Missing dog-forest boundaries
 
 129 of 505 dog forests have no outline, only a marker. That gap is **real
