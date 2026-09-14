@@ -1,3 +1,4 @@
+import { formatDuration } from "../travel";
 import { AVAILABILITY_LABEL, CONFIDENCE_LABEL, type Facility } from "../types";
 
 /** How the facility sits relative to its dog forest, in one phrase. */
@@ -17,6 +18,8 @@ export interface CardOptions {
   maxDates?: number;
   /** Rendered with emphasis, e.g. the night picked in the calendar. */
   highlightDate?: string | null;
+  /** Driving seconds from the user's address, when one has been entered. */
+  driveSeconds?: number | null;
 }
 
 const DATE_FORMAT = new Intl.DateTimeFormat("en-GB", {
@@ -41,7 +44,13 @@ export function facilityCard(
   nights: string[],
   options: CardOptions = {},
 ): HTMLElement {
-  const { selected = false, onSelect, maxDates = 8, highlightDate = null } = options;
+  const {
+    selected = false,
+    onSelect,
+    maxDates = 8,
+    highlightDate = null,
+    driveSeconds = null,
+  } = options;
 
   const card = document.createElement("article");
   card.className = "card";
@@ -71,6 +80,14 @@ export function facilityCard(
   availability.className = `badge avail-${facility.availability}`;
   availability.textContent = AVAILABILITY_LABEL[facility.availability];
   badges.append(confidence, availability);
+
+  if (driveSeconds !== null) {
+    const drive = document.createElement("span");
+    drive.className = "badge drive";
+    drive.textContent = `${formatDuration(driveSeconds)} by car`;
+    drive.title = "Driving time from your address, via OSRM";
+    badges.append(drive);
+  }
 
   if (facility.availability === "calendar") {
     const count = document.createElement("span");

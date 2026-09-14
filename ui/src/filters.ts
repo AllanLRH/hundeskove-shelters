@@ -19,7 +19,13 @@ export interface Filters {
   to: string;
   /** Set when a calendar day is clicked, narrowing every view to that night. */
   day: string | null;
+  /** Driving minutes from the user's address; null means no limit. */
+  maxDriveMinutes: number | null;
+  sortBy: SortBy;
 }
+
+/** Nearest-first only makes sense once an address has been entered. */
+export type SortBy = "confidence" | "drive";
 
 /**
  * Tiers shown before you ask for more.
@@ -52,6 +58,8 @@ export function defaultFilters(data: Dataset): Filters {
     from: data.horizonStart,
     to: data.horizonEnd,
     day: null,
+    maxDriveMinutes: null,
+    sortBy: "confidence",
   };
 }
 
@@ -85,14 +93,33 @@ export function matchingNights(
   return out;
 }
 
-/** Every filter except the ones about *when*: availability, certainty, type, proximity. */
-export function passesAttributes(facility: Facility, filters: Filters): boolean {
+/**
+ * Every filter except the ones about *when*: availability, certainty, type,
+ * proximity, and driving time.
+ *
+ * `durations` is separate from `filters` because it is fetched data, not user
+ * intent — it arrives asynchronously and is not part of the shareable state.
+ */
+export function passesAttributes(
+  facility: Facility,
+  filters: Filters,
+  durations?: Map<string, number>,
+): boolean {
   if (!filters.availability.has(facility.availability)) return false;
   if (!filters.confidence.has(facility.confidence)) return false;
   if (!filters.facilityTypes.has(facility.facility_type)) return false;
   if (facility.distance_m > filters.maxDistance) return false;
   if (filters.minOverlap > 0) {
     if ((facility.overlap_fraction ?? 0) < filters.minOverlap) return false;
+  }
+  if (filters.maxDriveMinutes !== null && durations && durations.size > 0) {
+    const seconds = durations.get(facility.shelter_id);
+    // Missing means OSRM could not route there at all. With a drive-time limit
+    // set, "we do not know" is not "within the limit", so it is excluded --
+    // but only once we actually have a routing result to judge against, which
+    // is why an empty map skips this filter entirely rather than hiding
+    // everything while the request is still in flight.
+    if (seconds === undefined || seconds > filters.maxDriveMinutes * 60) return false;
   }
   return true;
 }
@@ -102,41 +129,56 @@ export interface Hit {
   nights: string[];
 }
 
-function sortHits(hits: Hit[]): Hit[] {
+function sortHits(hits: Hit[], filters: Filters, durations?: Map<string, number>): Hit[] {
   const rank = new Map(CONFIDENCE_ORDER.map((c, i) => [c, i]));
-  return hits.sort(
-    (a, b) =>
-      rank.get(a.facility.confidence)! - rank.get(b.facility.confidence)! ||
-      a.facility.distance_m - b.facility.distance_m ||
-      a.facility.name.localeCompare(b.facility.name, "da"),
-  );
+  const byConfidence = (a: Hit, b: Hit): number =>
+    rank.get(a.facility.confidence)! - rank.get(b.facility.confidence)! ||
+    a.facility.distance_m - b.facility.distance_m ||
+    a.facility.name.localeCompare(b.facility.name, "da");
+
+  if (filters.sortBy !== "drive" || !durations || durations.size === 0) {
+    return hits.sort(byConfidence);
+  }
+  // Unroutable facilities sort last rather than first, which is what a bare
+  // `undefined` comparison would otherwise do.
+  const seconds = (hit: Hit): number =>
+    durations.get(hit.facility.shelter_id) ?? Number.POSITIVE_INFINITY;
+  return hits.sort((a, b) => seconds(a) - seconds(b) || byConfidence(a, b));
 }
 
 /** The list and map read from this. */
-export function applyFilters(data: Dataset, filters: Filters): Hit[] {
+export function applyFilters(
+  data: Dataset,
+  filters: Filters,
+  durations?: Map<string, number>,
+): Hit[] {
   const hits: Hit[] = [];
   for (const facility of data.facilities) {
-    if (!passesAttributes(facility, filters)) continue;
+    if (!passesAttributes(facility, filters, durations)) continue;
     const nights = matchingNights(facility, filters);
     if (nights.length === 0) continue;
     hits.push({ facility, nights });
   }
-  return sortHits(hits);
+  return sortHits(hits, filters, durations);
 }
 
 /**
  * The calendar's day-detail reads from this instead of `applyFilters`: same
  * result, minus the night-of-week and date-range narrowing.
  */
-export function applyCalendarFilters(data: Dataset, filters: Filters): Hit[] {
+export function applyCalendarFilters(
+  data: Dataset,
+  filters: Filters,
+  durations?: Map<string, number>,
+): Hit[] {
   const hits: Hit[] = [];
   for (const facility of data.facilities) {
-    if (!passesAttributes(facility, filters)) continue;
+    if (!passesAttributes(facility, filters, durations)) continue;
     const nights = matchingNights(facility, filters, { respectNightAndRange: false });
     if (nights.length === 0) continue;
     hits.push({ facility, nights });
   }
-  return sortHits(hits);
+  return sortHits(hits, filters, durations);
 }
 
 // --- URL hash round-trip, so a filtered view can be linked or reloaded ------ //
@@ -151,6 +193,10 @@ export function toHash(filters: Filters, data: Dataset): string {
   if (filters.from !== data.horizonStart) params.set("from", filters.from);
   if (filters.to !== data.horizonEnd) params.set("to", filters.to);
   if (filters.day) params.set("day", filters.day);
+  // The limit and sort order are shareable preferences. The address they are
+  // relative to is deliberately NOT in the hash -- see travel.ts.
+  if (filters.maxDriveMinutes !== null) params.set("drive", String(filters.maxDriveMinutes));
+  if (filters.sortBy !== "confidence") params.set("sort", filters.sortBy);
   // Always written. Omitting it when everything is selected used to be safe,
   // because "no t" and "all types" meant the same thing; now the default is
   // shelters only, so an omitted t would silently narrow a link that had every
@@ -187,5 +233,8 @@ export function fromHash(hash: string, data: Dataset): Filters {
   filters.from = params.get("from") ?? filters.from;
   filters.to = params.get("to") ?? filters.to;
   filters.day = params.get("day");
+  const drive = params.get("drive");
+  if (drive) filters.maxDriveMinutes = Number(drive);
+  if (params.get("sort") === "drive") filters.sortBy = "drive";
   return filters;
 }

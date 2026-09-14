@@ -16,12 +16,20 @@ interface DayCount {
  * and the interesting signal — which nights are actually still bookable — would
  * be invisible.
  */
-function countNights(data: Dataset, filters: Filters): Map<string, DayCount> {
+function countNights(
+  data: Dataset,
+  filters: Filters,
+  durations?: Map<string, number>,
+): Map<string, DayCount> {
   const counts = new Map<string, DayCount>();
   for (const date of data.allDates) counts.set(date, { bookable: 0, open: 0 });
 
   for (const facility of data.facilities) {
-    if (!passesAttributes(facility, filters)) continue;
+    // Durations matter here too: drive time is a "which places" filter like
+    // facility type, not a "which nights" one, so unlike Nights and Dates it
+    // does reach the calendar. Leaving it out would make each cell's count
+    // disagree with the day-detail that opens when you click it.
+    if (!passesAttributes(facility, filters, durations)) continue;
     for (const date of facility.nights) {
       const entry = counts.get(date);
       if (!entry) continue;
@@ -46,9 +54,10 @@ export function renderCalendar(
   onPickDay: (date: string | null) => void,
   onSelect: (id: string) => void,
   selectedId: string | null,
+  durations?: Map<string, number>,
 ): void {
   root.replaceChildren();
-  const counts = countNights(data, filters);
+  const counts = countNights(data, filters, durations);
 
   const legend = document.createElement("p");
   legend.className = "cal-legend";
@@ -166,7 +175,7 @@ export function renderCalendar(
     // Put the detail right under the month it belongs to, so it appears next to
     // the cell that was clicked rather than somewhere off-screen.
     if (filters.day && filters.day.slice(0, 7) === month) {
-      root.append(renderDayDetail(filters.day, hits, onSelect, selectedId));
+      root.append(renderDayDetail(filters.day, hits, onSelect, selectedId, durations));
     }
   }
 }
@@ -191,6 +200,7 @@ function renderDayDetail(
   hits: Hit[],
   onSelect: (id: string) => void,
   selectedId: string | null,
+  durations?: Map<string, number>,
 ): HTMLElement {
   const section = document.createElement("section");
   section.className = "day-detail";
@@ -219,6 +229,7 @@ function renderDayDetail(
           selected: facility.shelter_id === selectedId,
           onSelect,
           highlightDate: date,
+          driveSeconds: durations?.get(facility.shelter_id) ?? null,
         }),
       );
     }
@@ -236,6 +247,7 @@ function renderDayDetail(
           selected: facility.shelter_id === selectedId,
           onSelect,
           highlightDate: date,
+          driveSeconds: durations?.get(facility.shelter_id) ?? null,
         }),
       );
     }

@@ -7,6 +7,7 @@ export function renderList(
   selectedId: string | null,
   onSelect: (id: string) => void,
   highlightDate: string | null = null,
+  durations?: Map<string, number>,
 ): void {
   root.replaceChildren();
   if (hits.length === 0) {
@@ -24,6 +25,7 @@ export function renderList(
         selected: facility.shelter_id === selectedId,
         onSelect,
         highlightDate,
+        driveSeconds: durations?.get(facility.shelter_id) ?? null,
       }),
     );
   }

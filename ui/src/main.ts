@@ -12,6 +12,13 @@ import {
 } from "./filters";
 import { renderPanel } from "./panel";
 import { initTheme } from "./theme";
+import {
+  drivingDurations,
+  emptyTravel,
+  geocode,
+  rememberAddress,
+  type TravelState,
+} from "./travel";
 import { facilityCard } from "./views/card";
 import { renderCalendar } from "./views/calendar";
 import { renderList } from "./views/list";
@@ -42,6 +49,57 @@ async function start(): Promise<void> {
   let filters: Filters = fromHash(location.hash, data);
   let view: ViewName = "list";
   let selected: string | null = null;
+  let travel: TravelState = emptyTravel();
+
+  /**
+   * Geocode an address, then fetch driving times to every facility.
+   *
+   * Guards against a second submit while one is in flight: the public OSRM and
+   * Nominatim instances are donated capacity, and a double-click should not
+   * double the load.
+   */
+  async function lookUpAddress(query: string): Promise<void> {
+    const trimmed = query.trim();
+    if (!trimmed || travel.status === "working") return;
+
+    travel = { ...travel, query: trimmed, status: "working", error: null, progress: "Looking up address…" };
+    rememberAddress(trimmed);
+    render();
+
+    try {
+      const origin = await geocode(trimmed);
+      travel = { ...travel, origin, progress: "Calculating driving times…" };
+      render();
+
+      const durations = await drivingDurations(origin, data.facilities, (done, total) => {
+        if (total > 1) {
+          travel = { ...travel, progress: `Calculating driving times… ${done}/${total}` };
+          render();
+        }
+      });
+      travel = { ...travel, durations, status: "ready", progress: null };
+    } catch (error) {
+      travel = {
+        ...travel,
+        status: "error",
+        error: error instanceof Error ? error.message : String(error),
+        progress: null,
+      };
+    }
+    render();
+  }
+
+  function clearAddress(): void {
+    rememberAddress("");
+    travel = emptyTravel();
+    travel.query = "";
+    // A drive-time limit with no address behind it would silently hide
+    // everything, so drop it along with the address.
+    filters.maxDriveMinutes = null;
+    filters.sortBy = "confidence";
+    history.replaceState(null, "", `#${toHash(filters, data)}`);
+    render();
+  }
 
   const mapView = new MapView(el("map-canvas"), (id) => {
     selected = id;
@@ -85,6 +143,7 @@ async function start(): Promise<void> {
         selected: true,
         maxDates: Infinity,
         highlightDate: filters.day,
+        driveSeconds: travel.durations.get(hit.facility.shelter_id) ?? null,
       }),
     );
   }
@@ -94,20 +153,28 @@ async function start(): Promise<void> {
     // calendar deliberately does not: its whole point is to show the full
     // horizon so you can see the pattern across it, so it reads from
     // applyCalendarFilters instead — same result, minus those two.
-    const hits = applyFilters(data, filters);
-    const calendarHits = applyCalendarFilters(data, filters);
+    const hits = applyFilters(data, filters, travel.durations);
+    const calendarHits = applyCalendarFilters(data, filters, travel.durations);
 
     status.textContent =
       `${hits.length} of ${data.facilities.length} places match` +
       (filters.day ? ` on ${filters.day}` : "") +
       ` · availability checked ${data.checkedAt.slice(0, 10)}`;
 
-    renderPanel(el("panel"), data, filters, () => {
-      history.replaceState(null, "", `#${toHash(filters, data)}`);
-      render();
-    });
+    renderPanel(
+      el("panel"),
+      data,
+      filters,
+      travel,
+      () => {
+        history.replaceState(null, "", `#${toHash(filters, data)}`);
+        render();
+      },
+      (query) => void lookUpAddress(query),
+      clearAddress,
+    );
 
-    renderList(el("view-list"), hits, selected, select, filters.day);
+    renderList(el("view-list"), hits, selected, select, filters.day, travel.durations);
     renderCalendar(
       el("view-calendar"),
       data,
@@ -120,6 +187,7 @@ async function start(): Promise<void> {
       },
       select,
       selected,
+      travel.durations,
     );
     mapView.render(hits, selected);
     renderMapDetail(hits);

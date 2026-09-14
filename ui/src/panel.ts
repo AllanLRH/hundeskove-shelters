@@ -1,4 +1,5 @@
 import type { Filters } from "./filters";
+import { formatDuration, type TravelState } from "./travel";
 import {
   AVAILABILITY_LABEL,
   CONFIDENCE_LABEL,
@@ -52,7 +53,10 @@ export function renderPanel(
   root: HTMLElement,
   data: Dataset,
   filters: Filters,
+  travel: TravelState,
   onChange: () => void,
+  onAddress: (query: string) => void,
+  onClearAddress: () => void,
 ): void {
   root.replaceChildren();
 
@@ -153,7 +157,15 @@ export function renderPanel(
       types.append(toggle(value, value, filters.facilityTypes, onChange));
     });
 
-  root.append(nights, dates, availability, confidence, proximity, types);
+  root.append(
+    travelGroup(filters, travel, onChange, onAddress, onClearAddress),
+    nights,
+    dates,
+    availability,
+    confidence,
+    proximity,
+    types,
+  );
 }
 
 function quick(label: string, onClick: () => void): HTMLButtonElement {
@@ -207,3 +219,112 @@ function slider(
   wrapper.append(text, input);
   return wrapper;
 }
+
+/**
+ * Address entry plus the drive-time controls it unlocks.
+ *
+ * The form is a real <form> so Enter submits, and the address input keeps its
+ * own value across re-renders via `defaultValue` — the panel is rebuilt on
+ * every filter change, and a controlled `value` would fight the user's typing.
+ */
+function travelGroup(
+  filters: Filters,
+  travel: TravelState,
+  onChange: () => void,
+  onAddress: (query: string) => void,
+  onClearAddress: () => void,
+): HTMLElement {
+  const section = group(
+    "Drive time",
+    "Your address stays on this device and is never put in the shareable link.",
+  );
+
+  const form = document.createElement("form");
+  form.className = "address-form";
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "address-input";
+  input.placeholder = "Your address…";
+  input.autocomplete = "street-address";
+  input.defaultValue = travel.query;
+  input.setAttribute("aria-label", "Your address, for driving times");
+  const submit = document.createElement("button");
+  submit.type = "submit";
+  submit.className = "quick";
+  submit.textContent = travel.status === "working" ? "…" : "Go";
+  submit.disabled = travel.status === "working";
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    onAddress(input.value);
+  });
+  form.append(input, submit);
+  section.append(form);
+
+  if (travel.status === "working") {
+    const note = document.createElement("p");
+    note.className = "hint travel-status";
+    note.textContent = travel.progress ?? "Looking up…";
+    section.append(note);
+  }
+
+  if (travel.status === "error" && travel.error) {
+    const note = document.createElement("p");
+    note.className = "hint travel-error";
+    note.textContent = travel.error;
+    section.append(note);
+  }
+
+  if (travel.status === "ready" && travel.origin) {
+    const found = document.createElement("p");
+    found.className = "hint travel-origin";
+    found.textContent = `From ${travel.origin.label}`;
+    found.title = travel.origin.label;
+    section.append(found);
+
+    section.append(
+      slider(
+        filters.maxDriveMinutes === null
+          ? "Max drive: no limit"
+          : `Max drive: ${formatDuration(filters.maxDriveMinutes * 60)}`,
+        // The top of the range doubles as "no limit", so the slider has
+        // somewhere to go that means "stop filtering" without a second control.
+        filters.maxDriveMinutes ?? MAX_DRIVE_MINUTES,
+        15,
+        MAX_DRIVE_MINUTES,
+        15,
+        (value) => {
+          filters.maxDriveMinutes = value >= MAX_DRIVE_MINUTES ? null : value;
+          onChange();
+        },
+      ),
+    );
+
+    const sort = document.createElement("label");
+    sort.className = "toggle";
+    const sortBox = document.createElement("input");
+    sortBox.type = "checkbox";
+    sortBox.checked = filters.sortBy === "drive";
+    sortBox.addEventListener("change", () => {
+      filters.sortBy = sortBox.checked ? "drive" : "confidence";
+      onChange();
+    });
+    const sortText = document.createElement("span");
+    sortText.textContent = "Sort nearest first";
+    sort.append(sortBox, sortText);
+    section.append(sort);
+
+    const buttons = document.createElement("div");
+    buttons.className = "row-buttons";
+    buttons.append(
+      quick("Clear address", () => {
+        onClearAddress();
+      }),
+    );
+    section.append(buttons);
+  }
+
+  return section;
+}
+
+/** Slider ceiling; at the top it means "no limit" rather than four hours. */
+const MAX_DRIVE_MINUTES = 240;

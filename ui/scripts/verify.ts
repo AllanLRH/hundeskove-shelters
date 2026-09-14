@@ -19,6 +19,7 @@ import {
 } from "../src/filters";
 import type { Availability, Confidence, RawAvailability } from "../src/types";
 import { STORAGE_KEY } from "../src/theme";
+import { formatDuration } from "../src/travel";
 import {
   mapServices,
   udinaturenFacilityUrl,
@@ -318,6 +319,65 @@ check(
   facilityUrl === `https://udinaturen.dk/facilitet/?id=${sample.shelter_id}`,
   facilityUrl,
 );
+
+// --- driving times ---------------------------------------------------------
+{
+  check("formatDuration: under an hour", formatDuration(38 * 60) === "38 min", formatDuration(38 * 60));
+  check("formatDuration: exact hours drop the minutes", formatDuration(7200) === "2 h", formatDuration(7200));
+  check("formatDuration: hours and minutes", formatDuration(4320) === "1 h 12 min", formatDuration(4320));
+
+  const withDrive = allOf(["calendar", "open", "unknown"]);
+  const ids = data.facilities.map((f) => f.shelter_id);
+  // Two within an hour, one well beyond it.
+  const durations = new Map<string, number>([
+    [ids[0]!, 20 * 60],
+    [ids[1]!, 45 * 60],
+    [ids[2]!, 200 * 60],
+  ]);
+
+  withDrive.maxDriveMinutes = 60;
+  const within = applyFilters(data, withDrive, durations);
+  check(
+    "a drive-time limit keeps only facilities inside it",
+    within.length === 2 && within.every((h) => durations.get(h.facility.shelter_id)! <= 3600),
+    String(within.length),
+  );
+  check(
+    "facilities OSRM could not route to are excluded once a limit is set",
+    !within.some((h) => !durations.has(h.facility.shelter_id)),
+  );
+
+  // The guard that matters while a request is still in flight: an empty map
+  // must not mean "nothing is within range".
+  const noData = applyFilters(data, withDrive, new Map());
+  check(
+    "an empty duration map skips the filter instead of hiding everything",
+    noData.length > within.length,
+    `${noData.length} vs ${within.length}`,
+  );
+
+  const sorted = { ...withDrive, maxDriveMinutes: null, sortBy: "drive" as const };
+  const nearestFirst = applyFilters(data, sorted, durations);
+  check(
+    "sorting nearest-first puts the 20-minute one ahead of the 45-minute one",
+    nearestFirst[0]!.facility.shelter_id === ids[0] &&
+      nearestFirst[1]!.facility.shelter_id === ids[1],
+  );
+  check(
+    "facilities with no routing result sort last, not first",
+    durations.has(nearestFirst[0]!.facility.shelter_id),
+  );
+
+  // The address must never reach the shareable link.
+  const hashed = toHash({ ...withDrive, maxDriveMinutes: 90, sortBy: "drive" }, data);
+  check("the drive-time limit is shareable", hashed.includes("drive=90"));
+  check("the sort order is shareable", hashed.includes("sort=drive"));
+  check(
+    "no address or coordinate leaks into the URL hash",
+    !/address|lat|lon|origin/i.test(hashed),
+    hashed,
+  );
+}
 
 // --- theme -----------------------------------------------------------------
 // The pre-paint script in index.html duplicates the storage key by necessity

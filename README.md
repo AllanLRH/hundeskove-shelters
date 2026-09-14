@@ -165,6 +165,24 @@ things you want across two pages and neither page does both:
   segment is decorative — the GUID alone serves the right page. The trade-off
   is that this map shows no Hundeskov layer.
 
+**Drive time.** Entering an address adds a driving time to every facility, a
+"max drive" filter, and a nearest-first sort. Geocoding is
+[Nominatim](https://nominatim.openstreetmap.org), routing is
+[OSRM](https://project-osrm.org) — both OpenStreetMap's own public services, so
+they are asked for as little as possible: one geocode per submitted address
+(never per keystroke), and durations come from OSRM's **table** service, which
+answers one-origin-to-many-destinations in a single request rather than 338
+separate `/route` calls. Requests are chunked at 100 destinations (the
+documented `max-table-size` default, even though the public server currently
+allows more) and cached per origin for the session.
+
+**Your address is treated as personal data**: it is kept in `localStorage` on
+your own machine and is deliberately *never* written into the URL hash the way
+the other filters are, because a shared link would otherwise carry your home
+address to whoever opened it. The drive-time limit and sort order *are* in the
+hash — they are preferences, not identifying — so a shared link arrives inert
+until the recipient enters their own address.
+
 Filter state lives in the URL hash, so a particular view can be bookmarked.
 
 `just dev` runs the Vite dev server with hot reload and reads `output/`
