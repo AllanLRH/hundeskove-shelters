@@ -67,7 +67,7 @@ def discover(
         records, regions, categories, max_distance_m, filled
     )
 
-    outputs.write_catalogue(out_path, catalogue)
+    outputs.write_json(out_path, catalogue)
     outputs.write_dog_forest_geojson(
         dog_forests, {r["dog_forest_id"] for r in records}, out_path.parent
     )

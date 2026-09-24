@@ -23,18 +23,14 @@ CSV_NAME = "shelters.csv"
 GEOJSON_NAME = "dog_forests.geojson"
 
 
-def _write_json(path: Path, document: dict) -> None:
+def write_json(path: Path, document: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(document, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
-def write_catalogue(path: Path, catalogue: dict) -> None:
-    _write_json(path, catalogue)
-
-
 def write_availability(out_dir: Path, document: dict) -> Path:
     path = out_dir / AVAILABILITY_NAME
-    _write_json(path, document)
+    write_json(path, document)
     return path
 
 
