@@ -29,8 +29,13 @@ export const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as c
 /** fri–sat and sat–sun. */
 export const WEEKEND_NIGHTS: readonly NightIndex[] = [4, 5];
 
-/** Midday UTC, so a date is never dragged across a boundary by a timezone. */
-function at(night: Night): Date {
+/**
+ * Midday UTC, so a date is never dragged across a boundary by a timezone.
+ *
+ * Exported because formatting a night is the same problem: `Intl` on a
+ * midnight-UTC date shows the day before to anyone west of Greenwich.
+ */
+export function at(night: Night): Date {
   return new Date(`${night}T12:00:00Z`);
 }
 
@@ -65,8 +70,8 @@ export interface Horizon {
 /** Every night in a horizon, ascending. */
 export function nightsIn(horizon: Horizon): Night[] {
   const nights: Night[] = [];
-  const end = Date.parse(`${horizon.end}T12:00:00Z`);
-  for (let t = Date.parse(`${horizon.start}T12:00:00Z`); t <= end; t += 86_400_000) {
+  const end = at(horizon.end).getTime();
+  for (let t = at(horizon.start).getTime(); t <= end; t += 86_400_000) {
     nights.push(new Date(t).toISOString().slice(0, 10));
   }
   return nights;

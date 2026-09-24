@@ -7,7 +7,7 @@
  * detail panel.
  */
 
-import { DAY_LABELS, intoWeeks, isoWeek, nightIndex, NIGHT_LABELS, type Night } from "../domain/night";
+import { at, DAY_LABELS, intoWeeks, isoWeek, nightIndex, NIGHT_LABELS, type Night } from "../domain/night";
 import type { Dataset } from "../domain/dataset";
 import type { NightDetail } from "../app/state";
 import type { NightTally } from "../domain/search";
@@ -72,7 +72,7 @@ export function renderCalendar(
     const section = document.createElement("section");
     section.className = "cal-month";
     const heading = document.createElement("h3");
-    heading.textContent = MONTH_FORMAT.format(new Date(`${month}-01T12:00:00Z`));
+    heading.textContent = MONTH_FORMAT.format(at(`${month}-01`));
     section.append(heading, grid(nights, tally, detail?.night ?? null, handlers));
     root.append(section);
 
@@ -176,7 +176,7 @@ function renderNightDetail(
 
   const heading = document.createElement("h3");
   heading.textContent =
-    `${NIGHT_HEADING.format(new Date(`${detail.night}T12:00:00Z`))} — ` +
+    `${NIGHT_HEADING.format(at(detail.night))} — ` +
     `the ${NIGHT_LABELS[nightIndex(detail.night)]} night`;
   section.append(heading);
 

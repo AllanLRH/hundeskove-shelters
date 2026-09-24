@@ -14,7 +14,7 @@ import {
   type Facility,
 } from "../domain/facility";
 import { aerialLinks, udinaturenFacilityUrl, udinaturenMapUrl } from "../domain/links";
-import type { Night } from "../domain/night";
+import { at, type Night } from "../domain/night";
 import { formatDuration } from "../domain/travel";
 
 export interface CardOptions {
@@ -36,7 +36,7 @@ const NIGHT_FORMAT = new Intl.DateTimeFormat("en-GB", {
 });
 
 function formatNight(night: Night): string {
-  return NIGHT_FORMAT.format(new Date(`${night}T12:00:00Z`));
+  return NIGHT_FORMAT.format(at(night));
 }
 
 export function facilityCard(
