@@ -30,10 +30,6 @@ export class TravelTimes {
     return this.seconds.get(facilityId);
   }
 
-  has(facilityId: string): boolean {
-    return this.seconds.has(facilityId);
-  }
-
   /** False while no lookup has happened, which callers must not read as "nothing is near". */
   get known(): boolean {
     return this.seconds.size > 0;

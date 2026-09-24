@@ -82,10 +82,6 @@ export class MapView {
     if (this.map && this.lastBounds) this.map.fitBounds(this.lastBounds.pad(0.15));
   }
 
-  hasResults(): boolean {
-    return this.lastBounds !== null;
-  }
-
   /** Back to the default local view. */
   home(): void {
     this.map?.setView(COPENHAGEN, DEFAULT_ZOOM);
