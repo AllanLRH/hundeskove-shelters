@@ -24,6 +24,24 @@ const CONFIDENCE_COLOUR: Record<Confidence, string> = {
 const COPENHAGEN: L.LatLngExpression = [55.6761, 12.5683];
 const DEFAULT_ZOOM = 11;
 
+/**
+ * Where the basemap comes from.
+ *
+ * OSM's own tile servers are donated capacity with a
+ * [usage policy](https://operations.osmfoundation.org/policies/tiles/) that
+ * forbids heavy use and names "distributing an app that uses tiles from
+ * openstreetmap.org" as needing prior permission. A map session pulls a few
+ * hundred tiles, and unlike everything else this project fetches, that cost
+ * scales with the number of visitors rather than being amortised across them.
+ *
+ * Fine for a personal or small-audience instance; the first thing to change if
+ * one gets popular. Point `TILE_URL` at a self-hosted renderer or a provider
+ * whose terms cover public apps, and update `TILE_ATTRIBUTION` to match — that
+ * is the whole of the change.
+ */
+const TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+const TILE_ATTRIBUTION = "© OpenStreetMap contributors";
+
 export class MapView {
   private map: L.Map | null = null;
   private markers = L.layerGroup();
@@ -42,10 +60,7 @@ export class MapView {
       COPENHAGEN,
       DEFAULT_ZOOM,
     );
-    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      attribution: "© OpenStreetMap contributors",
-    }).addTo(map);
+    L.tileLayer(TILE_URL, { maxZoom: 19, attribution: TILE_ATTRIBUTION }).addTo(map);
     this.forests.addTo(map);
     this.markers.addTo(map);
     this.map = map;
