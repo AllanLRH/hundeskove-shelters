@@ -48,7 +48,9 @@ def to_shapely(facility: dict) -> base.BaseGeometry:
     The API's coordinate nesting already matches GeoJSON for the types it uses
     (MultiPoint for most facilities, MultiPolygon or MultiPoint for dog forests).
     """
-    return shape({"type": facility["geometryType"], "coordinates": facility["geometry"]})
+    return shape(
+        {"type": facility["geometryType"], "coordinates": facility["geometry"]}
+    )
 
 
 def _has_extent(polygon: list) -> bool:
@@ -87,7 +89,9 @@ def clean_geometry(facility: dict) -> base.BaseGeometry:
 
     kept = [polygon for polygon in facility["geometry"] if _has_extent(polygon)]
     if not kept:
-        points = [tuple(point) for polygon in facility["geometry"] for point in polygon[0]]
+        points = [
+            tuple(point) for polygon in facility["geometry"] for point in polygon[0]
+        ]
         logger.debug("%r has no polygon with area; using its points", facility["name"])
         return MultiPoint(sorted(set(points)))
 
@@ -175,7 +179,10 @@ def match_facilities(
     for facility in facilities:
         geometry = clean_geometry(facility)
         indices, distances = tree.query_nearest(
-            geometry, max_distance=max_distance_m, return_distance=True, all_matches=False
+            geometry,
+            max_distance=max_distance_m,
+            return_distance=True,
+            all_matches=False,
         )
         if len(indices) == 0:
             continue

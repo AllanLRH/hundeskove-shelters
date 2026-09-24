@@ -47,7 +47,9 @@ def main() -> None:
         fail(f"{len(wrong)} non-Naturstyrelsen facilities carry dates")
 
     # Nothing may be reported inside a dog forest that has no outline.
-    impossible = [r for r in rows if r["inside_polygon"] and not r["dog_forest_has_boundary"]]
+    impossible = [
+        r for r in rows if r["inside_polygon"] and not r["dog_forest_has_boundary"]
+    ]
     if impossible:
         fail(f"{len(impossible)} facilities marked inside a boundary-less forest")
 
@@ -88,8 +90,12 @@ def main() -> None:
     bad = []
     for feature in forests["features"]:
         min_lon, min_lat, max_lon, max_lat = shape(feature["geometry"]).bounds
-        if not (LON[0] <= min_lon and max_lon <= LON[1]
-                and LAT[0] <= min_lat and max_lat <= LAT[1]):
+        if not (
+            LON[0] <= min_lon
+            and max_lon <= LON[1]
+            and LAT[0] <= min_lat
+            and max_lat <= LAT[1]
+        ):
             bad.append(feature["properties"]["name"])
     if bad:
         fail(f"{len(bad)} dog forests outside Denmark, e.g. {bad[0]!r}")

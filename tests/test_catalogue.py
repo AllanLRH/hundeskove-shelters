@@ -42,12 +42,16 @@ class TestFacilityRecord:
 
     def test_region_is_an_int_not_the_apis_string(self):
         """The API returns "84"; the CLI's --regions flag speaks ints."""
-        record = catalogue.facility_record(proximity(), None, booking.STATUS_NOT_BOOKABLE)
+        record = catalogue.facility_record(
+            proximity(), None, booking.STATUS_NOT_BOOKABLE
+        )
         assert record["region"] == 84
         assert isinstance(record["region"], int)
 
     def test_coordinates_land_in_denmark(self):
-        record = catalogue.facility_record(proximity(), None, booking.STATUS_NOT_BOOKABLE)
+        record = catalogue.facility_record(
+            proximity(), None, booking.STATUS_NOT_BOOKABLE
+        )
         assert 54.4 <= record["lat"] <= 57.9
         assert 7.9 <= record["lon"] <= 15.4
 
@@ -61,7 +65,9 @@ class TestFacilityRecord:
         assert record["inside_polygon"] is False
 
     def test_a_point_facility_has_no_overlap(self):
-        record = catalogue.facility_record(proximity(), None, booking.STATUS_NOT_BOOKABLE)
+        record = catalogue.facility_record(
+            proximity(), None, booking.STATUS_NOT_BOOKABLE
+        )
         assert record["overlap_fraction"] is None
 
     def test_booking_url_is_built_from_the_guid(self):

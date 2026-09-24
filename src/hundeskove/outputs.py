@@ -25,7 +25,9 @@ GEOJSON_NAME = "dog_forests.geojson"
 
 def write_json(path: Path, document: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(document, indent=2, ensure_ascii=False), encoding="utf-8")
+    path.write_text(
+        json.dumps(document, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
 
 
 def write_availability(out_dir: Path, document: dict) -> Path:
@@ -92,7 +94,9 @@ def write_dog_forest_geojson(
     # Compact rather than indented: this is machine-read only, and indenting
     # 505 polygons costs a lot of bytes for nobody's benefit.
     path.write_text(
-        json.dumps({"type": "FeatureCollection", "features": features}, ensure_ascii=False),
+        json.dumps(
+            {"type": "FeatureCollection", "features": features}, ensure_ascii=False
+        ),
         encoding="utf-8",
     )
     logger.info(

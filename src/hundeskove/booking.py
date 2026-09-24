@@ -140,7 +140,9 @@ def resolve_place_ids(
 ) -> dict[str, tuple[int | None, str]]:
     """Resolve many GUIDs concurrently, consulting and updating the cache."""
     missing = [guid for guid in guids if guid not in cache]
-    logger.info("resolving %d place ids (%d cached)", len(missing), len(guids) - len(missing))
+    logger.info(
+        "resolving %d place ids (%d cached)", len(missing), len(guids) - len(missing)
+    )
 
     if missing:
         with ThreadPoolExecutor(max_workers=max_workers) as pool:
@@ -201,7 +203,9 @@ def available_dates(booked: set[date], start: date, end: date) -> list[date]:
     """The complement of `booked` across the horizon."""
     span = (end - start).days + 1
     return [
-        day for offset in range(span) if (day := start + timedelta(days=offset)) not in booked
+        day
+        for offset in range(span)
+        if (day := start + timedelta(days=offset)) not in booked
     ]
 
 

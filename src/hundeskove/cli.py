@@ -67,7 +67,10 @@ def build_parser() -> argparse.ArgumentParser:
             help="metres from a dog forest a facility may be and still count (default: 500)",
         )
         sub.add_argument(
-            "--cache", type=Path, default=DEFAULT_CACHE, help="GUID -> place id cache file"
+            "--cache",
+            type=Path,
+            default=DEFAULT_CACHE,
+            help="GUID -> place id cache file",
         )
         sub.add_argument(
             "--no-cache", action="store_true", help="ignore and do not write the cache"
@@ -92,7 +95,10 @@ def build_parser() -> argparse.ArgumentParser:
             help="how far ahead to look (default: 3, the booking limit)",
         )
         sub.add_argument(
-            "--out-dir", type=Path, default=DEFAULT_OUT_DIR, help="where to write results"
+            "--out-dir",
+            type=Path,
+            default=DEFAULT_OUT_DIR,
+            help="where to write results",
         )
         sub.add_argument(
             "--anchor-step",
@@ -163,7 +169,9 @@ def main(argv: list[str] | None = None) -> int:
         stream=sys.stderr,
     )
     # httpx2 logs a line per request; hundreds of those drown out our own output.
-    logging.getLogger("httpx2").setLevel(logging.DEBUG if args.verbose else logging.WARNING)
+    logging.getLogger("httpx2").setLevel(
+        logging.DEBUG if args.verbose else logging.WARNING
+    )
 
     if args.command == "serve":
         serve_module.serve(args.ui_dir, args.data_dir, args.port, args.host)

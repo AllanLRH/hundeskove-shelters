@@ -54,7 +54,9 @@ def fetch_all_regions(
     by_id: dict[str, dict] = {}
     for region in regions:
         facilities = fetch_facilities(client, umb_id, region)
-        logger.info("region %s, umbId %s: %d facilities", region, umb_id, len(facilities))
+        logger.info(
+            "region %s, umbId %s: %d facilities", region, umb_id, len(facilities)
+        )
         for facility in facilities:
             by_id.setdefault(facility["id"], facility)
     return list(by_id.values())
@@ -76,6 +78,9 @@ def fetch_categories(
         for facility in fetch_all_regions(client, umb_id, regions):
             if facility["id"] in by_id:
                 continue
-            by_id[facility["id"]] = facility | {"umb_id": umb_id, "facility_type": label}
+            by_id[facility["id"]] = facility | {
+                "umb_id": umb_id,
+                "facility_type": label,
+            }
     logger.info("%d facilities across %d categories", len(by_id), len(umb_ids))
     return list(by_id.values())

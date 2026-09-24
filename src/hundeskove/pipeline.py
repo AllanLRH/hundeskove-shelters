@@ -58,9 +58,13 @@ def discover(
         proximities = geo.match_facilities(facilities, dog_forests, max_distance_m)
         proximities.sort(key=lambda p: (not p.inside_polygon, p.distance_m))
 
-        bookable_guids = [p.facility["id"] for p in proximities if p.facility["booking"]]
+        bookable_guids = [
+            p.facility["id"] for p in proximities if p.facility["booking"]
+        ]
         cache = booking.PlaceIdCache(cache_path, enabled=use_cache)
-        place_ids = booking.resolve_place_ids(client, bookable_guids, cache, max_workers)
+        place_ids = booking.resolve_place_ids(
+            client, bookable_guids, cache, max_workers
+        )
 
     records = catalogue_mod.build_records(proximities, place_ids)
     catalogue = catalogue_mod.build_catalogue(
@@ -189,7 +193,9 @@ def _apply_availability(
     results = []
     for record in records:
         booked = booked_by_id.get(record["shelter_id"])
-        dates = booking.available_dates(booked, start, end) if booked is not None else []
+        dates = (
+            booking.available_dates(booked, start, end) if booked is not None else []
+        )
         results.append(
             {
                 **record,

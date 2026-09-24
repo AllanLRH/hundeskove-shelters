@@ -67,7 +67,9 @@ def fetch_dog_parks(cache_path: Path, refresh: bool = False) -> list[dict]:
             response.raise_for_status()
             payload = response.json()
     except (httpx2.HTTPError, ValueError) as exc:
-        logger.warning("Overpass unavailable (%s); continuing without OSM geofences", exc)
+        logger.warning(
+            "Overpass unavailable (%s); continuing without OSM geofences", exc
+        )
         return []
 
     cache_path.parent.mkdir(parents=True, exist_ok=True)

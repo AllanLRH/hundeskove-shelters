@@ -19,9 +19,7 @@ _to_utm32 = pyproj.Transformer.from_crs(4326, 25832, always_xy=True).transform
 def park(x: float, y: float, size: float = 200, name: str = "OSM park") -> tuple:
     """A dog-park polygon already in UTM32, as `to_polygons` would produce."""
     return (
-        Polygon(
-            [(x, y), (x + size, y), (x + size, y + size), (x, y + size)]
-        ),
+        Polygon([(x, y), (x + size, y), (x + size, y + size), (x, y + size)]),
         name,
     )
 

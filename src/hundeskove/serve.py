@@ -47,7 +47,9 @@ def serve(ui_dir: Path, data_dir: Path, port: int, host: str = "127.0.0.1") -> N
 
     handler = functools.partial(UIRequestHandler, ui_dir=ui_dir, data_dir=data_dir)
     with ThreadingHTTPServer((host, port), handler) as server:
-        logger.info("serving %s (data from %s) at http://%s:%d", ui_dir, data_dir, host, port)
+        logger.info(
+            "serving %s (data from %s) at http://%s:%d", ui_dir, data_dir, host, port
+        )
         try:
             server.serve_forever()
         except KeyboardInterrupt:
