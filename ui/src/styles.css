@@ -538,6 +538,18 @@ footer {
 }
 footer a { color: inherit; }
 
+.privacy {
+  margin-top: .75rem;
+  max-width: 62ch;
+}
+.privacy summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--ink);
+}
+.privacy p { margin: .6rem 0 0; }
+.privacy code { font-size: .95em; }
+
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
   .card[tabindex]:hover, .cal-cell:hover { transform: none; }

@@ -55,6 +55,42 @@
       <a href="https://nominatim.openstreetmap.org" rel="noreferrer">Nominatim</a>
       and <a href="https://project-osrm.org" rel="noreferrer">OSRM</a>, both
       OpenStreetMap-based public services.
+      <a href="https://opendatacommons.org/licenses/odbl/1-0/" rel="noreferrer"
+        >Boundary data is ODbL</a
+      >; <a href="https://github.com/allanlrh/hundeskove" rel="noreferrer">the code is MIT</a>.
+
+      <details class="privacy">
+        <summary>What leaves your browser</summary>
+        <p>
+          This page is static: the shelter and dog-forest data is generated ahead of
+          time and served as files, so browsing, filtering and picking dates send
+          nothing anywhere.
+        </p>
+        <p>
+          The one exception is the address you type for driving times. When you submit
+          it — never while you type — the address text is sent to
+          <a href="https://nominatim.openstreetmap.org" rel="noreferrer">Nominatim</a>
+          (OpenStreetMap Foundation) to turn it into a coordinate, and that coordinate
+          is then sent to <a href="https://project-osrm.org" rel="noreferrer">OSRM</a>
+          (FOSSGIS e.V., Germany) to measure driving times. Both are
+          OpenStreetMap&rsquo;s own public services, and both have their own privacy
+          terms.
+        </p>
+        <p>
+          Your address is stored only in this browser&rsquo;s <code>localStorage</code>,
+          on your own machine. It is never sent to this site&rsquo;s server and is
+          deliberately kept out of the shareable link in the address bar, so a link you
+          share carries your filters but not where you live. Clearing the address field
+          removes it. Map tiles are fetched from
+          <a href="https://www.openstreetmap.org" rel="noreferrer">openstreetmap.org</a>
+          as you pan, which reveals your IP address to them in the ordinary way any
+          image request does.
+        </p>
+        <p>
+          Questions, or want this instance to stop asking something of your server?
+          <a href="mailto:allan.lrh@gmail.com">allan.lrh@gmail.com</a>.
+        </p>
+      </details>
     </footer>
     <script type="module" src="/src/main.ts"></script>
   </body>
