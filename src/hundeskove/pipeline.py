@@ -19,12 +19,8 @@ from pathlib import Path
 
 import httpx2
 
+from . import USER_AGENT
 from . import booking, catalogue as catalogue_mod, geo, osm, outputs, udinaturen
-
-USER_AGENT = (
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/122.0 Safari/537.36 hundeskove/0.1"
-)
 
 logger = logging.getLogger(__name__)
 

@@ -29,6 +29,7 @@ from shapely.geometry import Polygon
 from shapely.ops import transform
 from shapely.strtree import STRtree
 
+from . import USER_AGENT
 from .geo import has_boundary, to_shapely, wgs84_to_utm32_shape
 
 OVERPASS_URL = "https://overpass-api.de/api/interpreter"
@@ -61,9 +62,7 @@ def fetch_dog_parks(cache_path: Path, refresh: bool = False) -> list[dict]:
 
     logger.info("querying Overpass for Danish dog parks (this is slow)")
     try:
-        with httpx2.Client(
-            timeout=200.0, headers={"User-Agent": "hundeskove/0.1 (+dog forest mapping)"}
-        ) as client:
+        with httpx2.Client(timeout=200.0, headers={"User-Agent": USER_AGENT}) as client:
             response = client.post(OVERPASS_URL, data={"data": OVERPASS_QUERY})
             response.raise_for_status()
             payload = response.json()
