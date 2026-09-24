@@ -278,7 +278,7 @@ evidence:
 
 Facility and dog-forest data: udinaturen.dk / GeoFA-FKG. Gap-filled geofences:
 **© OpenStreetMap contributors, ODbL**. Redistributing the output as a database
-carries ODbL share-alike obligations.
+carries ODbL share-alike obligations — see `LICENSE-DATA.md`.
 
 ## The APIs
 
