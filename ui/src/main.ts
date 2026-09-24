@@ -17,7 +17,7 @@ import { readDriveCache, writeDriveCache } from "./io/driveCache";
 import { NominatimGeocoder } from "./io/geocoding";
 import { OsrmRouter } from "./io/routing";
 import { ADDRESS_KEY, localStore } from "./io/storage";
-import { StaticDatasetSource, type DatasetSource } from "./io/datasetSource";
+import { MutableDatasetSource, type DatasetSource } from "./io/datasetSource";
 import {
   adoptDataset,
   clearTravel,
@@ -53,7 +53,7 @@ async function start(): Promise<void> {
   const status = el("status");
   let source: DatasetSource;
   try {
-    source = new StaticDatasetSource(await loadDataset());
+    source = new MutableDatasetSource(await loadDataset());
   } catch (error) {
     status.textContent = error instanceof Error ? error.message : String(error);
     status.classList.add("error");

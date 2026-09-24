@@ -8,8 +8,9 @@
  * "data has changed" banner and update on a click instead of reshuffling the
  * list while it is being read.
  *
- * Only `StaticDatasetSource` exists today. A polling implementation can be
- * added without any view or state transition changing.
+ * Only `MutableDatasetSource` exists today, and nothing offers it new data. A
+ * polling implementation can be added without any view or state transition
+ * changing.
  */
 
 import type { Dataset } from "../domain/dataset";
@@ -40,36 +41,11 @@ export function snapshotOf(dataset: Dataset): DatasetSnapshot {
   return { dataset, revision: revisionOf(dataset) };
 }
 
-/** One dataset, fetched once. Never produces a pending snapshot. */
-export class StaticDatasetSource implements DatasetSource {
-  private snapshot: DatasetSnapshot;
-
-  constructor(dataset: Dataset) {
-    this.snapshot = snapshotOf(dataset);
-  }
-
-  current(): DatasetSnapshot {
-    return this.snapshot;
-  }
-
-  pending(): DatasetSnapshot | null {
-    return null;
-  }
-
-  subscribe(): Unsubscribe {
-    return () => {};
-  }
-
-  adopt(): DatasetSnapshot {
-    return this.snapshot;
-  }
-}
-
 /**
  * A source that can be handed newer data from outside.
  *
- * The base for a future polling implementation, and what tests use to prove
- * that a pending snapshot changes nothing until it is adopted.
+ * Nothing offers it anything yet, so today it behaves as a fixed dataset. It is
+ * also the base for the polling implementation, which only has to call `offer()`.
  */
 export class MutableDatasetSource implements DatasetSource {
   private snapshot: DatasetSnapshot;

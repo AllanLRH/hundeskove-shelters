@@ -2,10 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { defaultFilters } from "../../src/domain/filters";
 import { TravelTimes } from "../../src/domain/travel";
-import {
-  MutableDatasetSource,
-  StaticDatasetSource,
-} from "../../src/io/datasetSource";
+import { MutableDatasetSource } from "../../src/io/datasetSource";
 import {
   adoptDataset,
   clearTravel,
@@ -102,12 +99,6 @@ describe("a dataset refresh", () => {
     source.offer(next);
     expect(source.adopt().dataset).toBe(next);
     expect(source.pending()).toBeNull();
-  });
-
-  it("never offers anything from a static source", () => {
-    const source = new StaticDatasetSource(dataset);
-    expect(source.pending()).toBeNull();
-    expect(source.adopt().dataset).toBe(dataset);
   });
 
   it("keeps a selection that survived the refresh", () => {
