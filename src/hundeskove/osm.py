@@ -26,7 +26,6 @@ from pathlib import Path
 
 import httpx2
 from shapely.geometry import Polygon
-from shapely.ops import transform
 from shapely.strtree import STRtree
 
 from . import USER_AGENT

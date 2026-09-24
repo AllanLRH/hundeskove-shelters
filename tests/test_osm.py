@@ -8,10 +8,9 @@ must not get wrong.
 
 import pyproj
 from shapely.geometry import Polygon
-from shapely.ops import transform
 
 from hundeskove import geo, osm
-from tests.builders import facility, square
+from tests.builders import facility
 
 _to_utm32 = pyproj.Transformer.from_crs(4326, 25832, always_xy=True).transform
 
