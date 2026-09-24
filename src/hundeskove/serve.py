@@ -33,8 +33,11 @@ class UIRequestHandler(SimpleHTTPRequestHandler):
                 self.directory = original
         return super().translate_path(path)
 
-    def log_message(self, fmt: str, *args) -> None:
-        logger.debug("%s - %s", self.address_string(), fmt % args)
+    # Parameter named `format` to match BaseHTTPRequestHandler, which is what
+    # makes this a valid override — it shadows the builtin only inside these
+    # two lines, and renaming it would break a keyword call from the base class.
+    def log_message(self, format: str, *args) -> None:
+        logger.debug("%s - %s", self.address_string(), format % args)
 
 
 def serve(ui_dir: Path, data_dir: Path, port: int, host: str = "127.0.0.1") -> None:

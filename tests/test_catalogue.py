@@ -5,12 +5,17 @@ deliberately frozen so existing links and scripts keep working. This module is
 the only place that knows them, so this is the only place that can break them.
 """
 
+from typing import Any
+
 from hundeskove import booking, catalogue, geo
 from tests.builders import facility, square
 
 
 def proximity(**overrides) -> geo.Proximity:
-    defaults = {
+    # `Any` rather than a precise value type: the splat below maps keys to
+    # parameters dynamically, which no checker can follow. Narrowing it would
+    # only trade a real union error for a fake one.
+    defaults: dict[str, Any] = {
         "facility": facility(geometry=[[720050, 6180050]]),
         "dog_forest": facility(
             id="forest1",
@@ -83,7 +88,9 @@ class TestBuildRecords:
 
     def test_place_ids_are_matched_by_facility_id(self):
         p = proximity()
-        place_ids = {p.facility["id"]: (7, booking.STATUS_RESOLVED)}
+        place_ids: dict[str, tuple[int | None, str]] = {
+            p.facility["id"]: (7, booking.STATUS_RESOLVED)
+        }
         [record] = catalogue.build_records([p], place_ids)
         assert record["place_id"] == 7
         assert record["booking_status"] == booking.STATUS_RESOLVED

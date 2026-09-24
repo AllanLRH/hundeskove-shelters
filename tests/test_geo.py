@@ -105,4 +105,7 @@ class TestMatchFacilities:
         [proximity] = geo.match_facilities([straddling], [dog_forest], 500)
         assert not proximity.inside_polygon
         assert proximity.distance_m == 0.0
+        # An area facility must carry a fraction; None here would mean it was
+        # treated as a point, which is the bug this test exists to catch.
+        assert proximity.overlap_fraction is not None
         assert 0 < proximity.overlap_fraction < 1
