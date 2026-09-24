@@ -7,8 +7,8 @@
     <script>
       /* Deliberately a classic inline script, not a module: Vite bundles inline
          modules into the deferred main chunk, which runs after first paint and
-         flashes white at dark-mode users. The storage key is asserted to match
-         theme.ts in ui/scripts/verify.ts. */
+         flashes white at dark-mode users. The storage key below is asserted to
+         match THEME_KEY in src/io/storage.ts by ui/scripts/parity.ts. */
       try {
         var t = localStorage.getItem("hundeskove:theme");
         if (t === "light" || t === "dark")

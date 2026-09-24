@@ -14,6 +14,7 @@ import { resolve } from "node:path";
 import { defaultFilters } from "../src/domain/filters";
 import { findMatches, tallyNights } from "../src/domain/search";
 import { confidenceOf } from "../src/domain/facility";
+import { THEME_KEY } from "../src/io/storage";
 import { parseDataset, type WireAvailability } from "../src/io/wire";
 
 const OUT = resolve(process.cwd(), "../output");
@@ -81,6 +82,17 @@ check(
       f.position.lat >= 54.4 && f.position.lat <= 57.9 &&
       f.position.lon >= 7.9 && f.position.lon <= 15.4,
   ),
+);
+
+// index.html reads the theme before first paint, from a classic inline script
+// that cannot import THEME_KEY. If the two drift, dark-mode users get the white
+// flash that script exists to prevent — and nothing else would catch it.
+check(
+  "the pre-paint theme key in index.html matches storage.ts",
+  readFileSync(resolve(process.cwd(), "index.html"), "utf8").includes(
+    `localStorage.getItem("${THEME_KEY}")`,
+  ),
+  `expected localStorage.getItem("${THEME_KEY}")`,
 );
 
 console.log(failures === 0 ? "\nUI parity checks passed" : `\n${failures} failed`);
