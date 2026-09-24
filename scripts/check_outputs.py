@@ -9,6 +9,8 @@ import json
 import sys
 from pathlib import Path
 
+from shapely.geometry import shape
+
 OUT = Path("output")
 # Generous bounding box around Denmark, incl. Bornholm.
 LAT = (54.4, 57.9)
@@ -85,31 +87,13 @@ def main() -> None:
 
     bad = []
     for feature in forests["features"]:
-        for lon, lat in _coords(feature["geometry"]):
-            if not (LAT[0] <= lat <= LAT[1] and LON[0] <= lon <= LON[1]):
-                bad.append(feature["properties"]["name"])
-                break
+        min_lon, min_lat, max_lon, max_lat = shape(feature["geometry"]).bounds
+        if not (LON[0] <= min_lon and max_lon <= LON[1]
+                and LAT[0] <= min_lat and max_lat <= LAT[1]):
+            bad.append(feature["properties"]["name"])
     if bad:
         fail(f"{len(bad)} dog forests outside Denmark, e.g. {bad[0]!r}")
     print(f"ok  {len(forests['features'])} dog forest features, all within Denmark")
-
-
-def _coords(geometry: dict):
-    """Yield (lon, lat) pairs from any GeoJSON geometry."""
-    if geometry["type"] == "GeometryCollection":
-        stack = [g["coordinates"] for g in geometry["geometries"]]
-    else:
-        stack = [geometry["coordinates"]]
-    while stack:
-        item = stack.pop()
-        if (
-            isinstance(item, (list, tuple))
-            and len(item) == 2
-            and all(isinstance(v, (int, float)) for v in item)
-        ):
-            yield item
-        elif isinstance(item, (list, tuple)):
-            stack.extend(item)
 
 
 if __name__ == "__main__":
