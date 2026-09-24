@@ -280,6 +280,74 @@ Facility and dog-forest data: udinaturen.dk / GeoFA-FKG. Gap-filled geofences:
 **© OpenStreetMap contributors, ODbL**. Redistributing the output as a database
 carries ODbL share-alike obligations — see `LICENSE-DATA.md`.
 
+## Deploying it for other people
+
+Everything this project fetches comes from someone else's server, none of it
+through a documented API. That is fine at personal scale and stays fine at
+small public scale, but only because of how the costs are shaped — and one of
+them is shaped differently from the rest.
+
+**Upstream load is amortised, and does not grow with visitors.** The UI reads
+static JSON and never proxies to an upstream, so a refresh costs
+book.naturstyrelsen.dk the same 116 requests whether one person is looking or
+ten thousand are. This is the single most important property to preserve; a
+"live" lookup per page view would throw it away.
+
+**Tile traffic is not amortised.** Each visitor's browser pulls a few hundred
+tiles from `tile.openstreetmap.org`, whose
+[usage policy](https://operations.osmfoundation.org/policies/tiles/) forbids
+heavy use and names distributing an app that uses those tiles as needing prior
+permission. This is the first thing that breaks if an instance gets popular;
+`TILE_URL` in `ui/src/ui/map.ts` is a one-line swap to a self-hosted renderer
+or a provider whose terms cover public apps.
+
+The rest of the client-side calls are modest: one Nominatim geocode per
+*submitted* address (never per keystroke), and four OSRM `table` requests per
+address, cached per origin for the session.
+
+### Running it
+
+```sh
+just data              # once, to build the catalogue
+just build
+uv run hundeskove serve --host 0.0.0.0 --port 8000
+```
+
+`serve` is `SimpleHTTPRequestHandler` — no auth, no rate limiting, no TLS. Put
+a reverse proxy in front of it for anything reachable from outside, and note
+that the proxy, not this, is where visitor IPs will get logged.
+
+Refresh availability on a timer, **hourly rather than half-hourly**, using the
+recipe that already carries the polite settings:
+
+```cron
+17 * * * * cd /srv/hundeskove && just refresh >> /var/log/hundeskove.log 2>&1
+```
+
+Re-run `just discover` monthly at most; the facility layers barely change, and
+the place-id cache means a repeat run is nearly free.
+
+### What you are on the hook for
+
+* **ODbL share-alike.** `serve` exposes `output/` at `/data/`, which conveys
+  the OSM-derived `dog_forests.geojson` as a database rather than merely
+  rendering it. `LICENSE-DATA.md` spells out what that obliges; the page footer
+  already carries the attribution half.
+* **Identifying yourself.** Every outbound request sends
+  `hundeskove/<version> (+<homepage>; <contact>)`, built in `__init__.py`.
+  **Change `CONTACT` to your own address if you run your own instance** — the
+  point is that an operator who wants to throttle or object has someone to
+  write to.
+* **The address your visitors type.** It stays in their `localStorage`, never
+  reaches this server, and is deliberately kept out of the share link. But on a
+  public deployment you are the controller for its journey to Nominatim (OSMF)
+  and OSRM (FOSSGIS, Germany); the footer's "What leaves your browser"
+  disclosure is there to say so.
+* **Asking.** Neither udinaturen.dk nor book.naturstyrelsen.dk serves a
+  `robots.txt` (both 404) or publishes API terms, so there is nothing to be in
+  breach of — but a mail to Naturstyrelsen describing what you have built is
+  worth more than any amount of inference, and might get you a real API.
+
 ## The APIs
 
 Reverse-engineered; none of this is documented.

@@ -29,6 +29,14 @@ availability *ARGS:
 data *ARGS:
     uv run hundeskove run "$@"
 
+# The refresh a deployed instance should run on a timer. Gentler than the
+# defaults on purpose: this hits book.naturstyrelsen.dk, an undocumented
+# endpoint on someone else's classic-ASP server, ~116 times per run. Two
+# workers spreads that over a couple of minutes instead of bursting it.
+# Hourly is plenty — bookings over a three-month horizon do not move faster.
+refresh *ARGS:
+    uv run hundeskove availability --max-workers 2 "$@"
+
 # Vite dev server with hot reload; reads output/ directly.
 dev:
     {{npm}} --prefix ui run dev
