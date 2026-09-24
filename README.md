@@ -224,8 +224,8 @@ straddling a boundary is 0 m away and still not inside it.
 changes on an explicit `adopt()`, so data can never swap under the reader.
 `adoptDataset()` reconciles rather than assigns — filters carry over, a
 selection whose facility has gone is dropped, and travel times are pruned to
-surviving ids. Only `StaticDatasetSource` exists today; a polling one can be
-added without any view changing.
+surviving ids. The banner that offers the refresh is wired; nothing calls
+`offer()` yet, so a polling source is all that is still missing.
 
 ## Tests
 

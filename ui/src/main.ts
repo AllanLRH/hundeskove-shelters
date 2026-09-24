@@ -67,8 +67,8 @@ async function start(): Promise<void> {
     localStore.get(ADDRESS_KEY) ?? "",
   );
 
-  // Nothing offers a newer dataset yet, but the seam is live: when a polling
-  // source replaces the static one, the banner and the adopt path already work.
+  // Nothing offers a newer dataset yet; when something does, the banner below
+  // appears and the adopt path is already wired.
   source.subscribe(() => {
     state = updateOffered(state);
     render();
@@ -129,13 +129,11 @@ async function start(): Promise<void> {
     mapView.drawForests(dataset);
     render();
   }
-  // Referenced so the seam is obviously wired rather than dead; the banner that
-  // calls it arrives with the polling source.
-  void adopt;
 
   function render(): void {
     const vm = deriveViewModel(dataset, state);
     status.textContent = vm.status;
+    el("update-banner").hidden = !vm.updateAvailable;
 
     renderPanel(el("panel"), dataset, state.filters, vm.travel, {
       onChange: () => changeFilters(state.filters),
@@ -199,6 +197,7 @@ async function start(): Promise<void> {
   for (const name of VIEWS) {
     el(`tab-${name}`).addEventListener("click", () => set(showView(state, name)));
   }
+  el("update-apply").addEventListener("click", adopt);
   el("map-home").addEventListener("click", () => mapView.home());
   el("map-fit").addEventListener("click", () => mapView.fitToResults());
   window.addEventListener("hashchange", () => changeFilters(fromHash(location.hash, dataset)));
