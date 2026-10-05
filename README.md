@@ -8,8 +8,11 @@ project finds the places where the two overlap and shows which nights are still
 free.
 
 <!-- TODO: replace with a screenshot -->
-![hundeskove screenshot](docs/ui_light_mode.png)
-![hundeskove screenshot](docs/ui_dark_mode.png)
+![hundeskove map view (dark mode)](docs/ui_dark_mode_map.png)
+![hundeskove calendar view (light mode)](docs/ui_light_mode_calendar.png)
+![hundeskove list view (light mode)](docs/ui_light_mode_list.png)
+
+
 
 - **Map, list and calendar** over one shared set of filters.
 - **Honest about certainty** — from "inside an official boundary" down to "only a pin on the map".
